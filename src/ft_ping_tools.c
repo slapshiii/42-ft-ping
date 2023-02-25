@@ -4,27 +4,34 @@
 unsigned short	checksum(void *b, int len)
 {
 	unsigned short *buf = b;
-	unsigned int sum=0;
+	unsigned int sum = 0;
 	unsigned short result;
 
-	for ( sum = 0; len > 1; len -= 2 )
+	while (count > 1) {
+	/*  This is the inner loop */
 		sum += *buf++;
-	if ( len == 1 )
+		count -= 2;
+	}
+
+	/*  Add left-over byte, if any */
+	if (count > 0)
 		sum += *(unsigned char*)buf;
-	sum = (sum >> 16) + (sum & 0xFFFF);
-	sum += (sum >> 16);
+
+	/*  Fold 32-bit sum to 16 bits */
+	while (sum>>16)
+		sum = (sum & 0xffff) + (sum >> 16);
 	result = ~sum;
-	return result;
 }
 
 // Resolves the reverse lookup of the hostname
 char* reverse_dns_lookup(char *ip_addr)
 {
-	struct sockaddr_in temp_addr;   
+	struct in_addr		buf_addr;
+	struct sockaddr_in	temp_addr;
 	socklen_t len;
 	char buf[NI_MAXHOST], *ret_buf;
 
-	if (inet_pton(AF_INET, ip_addr, void *restrict dst) == 0) {
+	if (inet_pton(AF_INET, ip_addr, &buf_addr) == 0) {
 		printf("Could not resolve reverse lookup of hostname\n");
 		return NULL;
 	}

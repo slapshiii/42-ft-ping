@@ -13,7 +13,7 @@ C_FILE =	main.c
 SRCS =	$(addprefix $(SRCDIR)/, $(C_FILE))
 OBJS = 	$(addprefix $(OBJDIR)/, $(C_FILE:%.c=%.o))
 
-# CFLAGS += -Wall -Werror -Wextra
+CFLAGS += -Wall -Werror -Wextra
 
 CC=gcc
 
@@ -22,15 +22,15 @@ all:	${NAME}
 ${NAME}: ${OBJS}
 	${CC} ${CFLAGS} -o ${NAME}${OBJS}
 
-$(OBJDIR)/%.o:	$(SRCDIR)/%.c
+$(OBJDIR)/%.o:	$(SRCDIR)/%.c includes/ft_ping.h
 	@mkdir -p $(OBJDIR)
-	${CC} ${CFLAGS} -c $< -o $@
+	${CC} ${CFLAGS} ${INC_DIRS} -c $< -o $@
 
 clean:
 	-rm -rf ${OBJDIR}
 
 fclean:		clean
-	-rm -rf ${NAME} a.out *.txt
+	-rm -rf ${NAME} a.out
 
 re:		fclean all
 

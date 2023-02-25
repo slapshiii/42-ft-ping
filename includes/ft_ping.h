@@ -14,6 +14,13 @@
 # define NI_NAMEREQD	0x04
 #endif
 
+typedef struct  icmp_s {
+    uint8_t     type;
+    uint8_t     code;
+    uint16_t    checksum;
+    void        *content;
+}               icmp;
+
 // TOOLS
 unsigned short	checksum(void *b, int len);
 
