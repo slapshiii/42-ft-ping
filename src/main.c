@@ -7,59 +7,17 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <netinet/ip_icmp.h>
 #include <time.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <time.h>
  
-// Define the Packet Constants
-// ping packet size
-#define PING_PKT_S 64
-  
-// Automatic port number
-#define PORT_NO 0
- 
-// Automatic port number
-#define PING_SLEEP_RATE 1000000 x
- 
-// Gives the timeout delay for receiving packets
-// in seconds
-#define RECV_TIMEOUT 1
- 
 // Define the Ping Loop
 int pingloop=1;
- 
- 
-// ping packet structure
-struct ping_pkt
-{
-    struct icmphdr hdr;
-    char msg[PING_PKT_S-sizeof(struct icmphdr)];
-};
- 
-// Calculating the Check Sum
-unsigned short checksum(void *b, int len)
-{    unsigned short *buf = b;
-    unsigned int sum=0;
-    unsigned short result;
- 
-    for ( sum = 0; len > 1; len -= 2 )
-        sum += *buf++;
-    if ( len == 1 )
-        sum += *(unsigned char*)buf;
-    sum = (sum >> 16) + (sum & 0xFFFF);
-    sum += (sum >> 16);
-    result = ~sum;
-    return result;
-}
- 
  
 // Interrupt handler
 void intHandler(int dummy)
