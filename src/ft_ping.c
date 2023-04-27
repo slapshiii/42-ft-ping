@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include "ft_ping.h"
 
 int	parse_arg(int ac, char **av) {
@@ -22,6 +21,3 @@ int main(int ac, char **av)
 	}
     return (0);
 }
-=======
-#include <ft_ping.h>
->>>>>>> 759c14044795be5d2ea8a66254283c808d76308f
