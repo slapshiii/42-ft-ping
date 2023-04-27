@@ -24,7 +24,6 @@ unsigned short	checksum(void *b, int len)
 }
 
 // Resolves the reverse lookup of the hostname
-<<<<<<< HEAD
 // char* reverse_dns_lookup(char *ip_addr)
 // {
 // 	struct sockaddr_in temp_addr;   
@@ -35,19 +34,6 @@ unsigned short	checksum(void *b, int len)
 // 		printf("Could not resolve reverse lookup of hostname\n");
 // 		return NULL;
 // 	}
-=======
-char* reverse_dns_lookup(char *ip_addr)
-{
-	struct in_addr		buf_addr;
-	struct sockaddr_in	temp_addr;
-	socklen_t len;
-	char buf[NI_MAXHOST], *ret_buf;
-
-	if (inet_pton(AF_INET, ip_addr, &buf_addr) == 0) {
-		printf("Could not resolve reverse lookup of hostname\n");
-		return NULL;
-	}
->>>>>>> 759c14044795be5d2ea8a66254283c808d76308f
 
 // 	temp_addr.sin_family = AF_INET;
 // 	temp_addr.sin_addr.s_addr = inet_addr(ip_addr);
