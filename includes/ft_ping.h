@@ -1,15 +1,29 @@
 #ifndef FT_PING_H
 #define FT_PING_H
 
-// #include <sys/types.h>
+#include <stdio.h>
+#include <sys/types.h>
 #include <sys/socket.h>
-// #include <netdb.h>
+#include <sys/time.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <time.h>
+#include <arpa/inet.h>
+#include <errno.h>
 
 #include "impc.h"
 #include "libft.h"
 
 #ifndef NI_MAXHOST
 # define NI_MAXHOST		1024
+#endif
+#ifndef NI_MAXSERV
+# define NI_MAXSERV	32
 #endif
 
 #ifndef NI_NAMEREQD
@@ -24,7 +38,7 @@
 #define PORT_NO 0
  
 // Automatic port number
-#define PING_SLEEP_RATE 1000000 x
+#define PING_SLEEP_RATE 1000000
  
 // Gives the timeout delay for receiving packets
 // in seconds
@@ -37,7 +51,24 @@ struct ping_pkt
     char msg[PING_PKT_S-sizeof(struct icmphdr)];
 };
 
+typedef struct  ping_data_s
+{
+    char *host;
+    char *reverse_hostname;
+    struct addrinfo *ip_addr;
+    int     sockfd;
+    int     is_addr;
+}               ping_data;
+
+extern int pingloop;
+
 // TOOLS
 unsigned short	checksum(void *b, int len);
+int dns_lookup(char *addr_host, struct addrinfo** res);
+char* reverse_dns_lookup(struct addrinfo *p);
+int is_valid_ipv4(char *ip_str);
+
+void send_ping(ping_data *data);
+
 
 #endif //FT_PING_H

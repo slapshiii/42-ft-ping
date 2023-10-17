@@ -4,7 +4,7 @@ SRCDIR := src
 OBJDIR := obj
 
 H_FILES :=	$(shell find -L ./ -name '*.h' -exec dirname {} \; | sed 's/ /\\ /g' | uniq)
-C_FILE =	ft_ping.c ft_ping_tools.c 
+C_FILE =	main.c ft_ping.c ft_ping_tools.c 
 
 INCLUDES :=	$(H_FILES:%=-I%)
 SRCS =	$(addprefix $(SRCDIR)/, $(C_FILE))

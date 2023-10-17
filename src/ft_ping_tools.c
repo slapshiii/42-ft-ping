@@ -7,68 +7,65 @@ unsigned short	checksum(void *b, int len)
 	unsigned int sum = 0;
 	unsigned short result;
 
-	while (count > 1) {
+	while (len > 1) {
 	/*  This is the inner loop */
 		sum += *buf++;
-		count -= 2;
+		len -= 2;
 	}
 
 	/*  Add left-over byte, if any */
-	if (count > 0)
+	if (len > 0)
 		sum += *(unsigned char*)buf;
 
 	/*  Fold 32-bit sum to 16 bits */
 	while (sum>>16)
 		sum = (sum & 0xffff) + (sum >> 16);
 	result = ~sum;
+    return result;
 }
 
 
 // Performs a DNS lookup
-char *dns_lookup(char *addr_host, struct sockaddr_in *addr_con)
+int dns_lookup(char *addr_host, struct addrinfo** res)
 {
+    struct addrinfo hints;
+    int status;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
     printf("\nResolving DNS..\n");
-    struct hostent *host_entity;
-    char *ip=(char*)malloc(NI_MAXHOST*sizeof(char));
-    int i;
- 
-    if ((host_entity = gethostbyname(addr_host)) == NULL)
-    {
-        // No ip found for hostname
-        return NULL;
+    if ((status = getaddrinfo(addr_host, NULL, &hints, res)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        return status;
     }
-     
-    //filling up address structure
-    strcpy(ip, inet_ntoa(*(struct in_addr *)
-                          host_entity->h_addr));
- 
-    (*addr_con).sin_family = host_entity->h_addrtype;
-    (*addr_con).sin_port = htons (PORT_NO);
-    (*addr_con).sin_addr.s_addr  = *(long*)host_entity->h_addr;
- 
-    return ip;
-     
+    return (0);
 }
  
 // Resolves the reverse lookup of the hostname
-char* reverse_dns_lookup(char *ip_addr)
+char* reverse_dns_lookup(struct addrinfo *p)
 {
-    struct sockaddr_in temp_addr;   
-    socklen_t len;
-    char buf[NI_MAXHOST], *ret_buf;
- 
-    temp_addr.sin_family = AF_INET;
-    temp_addr.sin_addr.s_addr = inet_addr(ip_addr);
-    len = sizeof(struct sockaddr_in);
- 
-    if (getnameinfo((struct sockaddr *) &temp_addr, len, buf,
-                    sizeof(buf), NULL, 0, NI_NAMEREQD))
-    {
-        printf("Could not resolve reverse lookup of hostname\n");
-        return NULL;
+    char hbuf[NI_MAXHOST];
+    char sbuf[NI_MAXSERV];
+    char *ret_buf;
+    int status;
+
+    printf("\nResolving reverseDNS..\n");
+    status = getnameinfo(p->ai_addr, p->ai_addrlen, hbuf, NI_MAXHOST, sbuf, NI_MAXSERV, 0);
+    if (status == 0) {
+        printf("Hostname/Serv: %s - %s\n", hbuf, sbuf);
+    } else {
+        fprintf(stderr, "getnameinfo: %s\n", gai_strerror(status));
     }
-    ret_buf = (char*)malloc((strlen(buf) +1)*sizeof(char) );
-    strcpy(ret_buf, buf);
+    ret_buf = (char*)malloc((strlen(hbuf) +1)*sizeof(char) );
+    strcpy(ret_buf, hbuf);
     return ret_buf;
 }
- 
+
+int is_valid_ipv4(char *ip_str)
+{
+    struct sockaddr_in sa;
+    return (inet_pton(AF_INET, ip_str, &(sa.sin_addr)) == 1);
+}
+
+// void print_statistics()
