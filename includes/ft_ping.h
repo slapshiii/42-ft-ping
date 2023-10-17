@@ -53,12 +53,23 @@ struct ping_pkt
 
 typedef struct  ping_data_s
 {
-    char *host;
-    char *reverse_hostname;
+    char            *hostname;
+    char            *reverse_hostname;
     struct addrinfo *ip_addr;
-    int     sockfd;
-    int     is_addr;
+    int             sockfd;
+    int             is_addr;
+    char            hostaddr[INET_ADDRSTRLEN];
 }               ping_data;
+
+typedef struct  arg_s
+{
+    int count;
+    int ttl;
+    int interval;
+    int paquetsize;
+    
+
+}               arg;
 
 extern int pingloop;
 

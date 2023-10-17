@@ -1,5 +1,4 @@
-// compile as -o ping
-// run as sudo ./ping <hostname>
+// run as sudo ./ft_ping <hostname>
 
 #include "ft_ping.h"
  
@@ -36,12 +35,13 @@ int main(int argc, char *argv[])
         for (struct addrinfo *p = ip_addr; p != NULL; p = p->ai_next) {
             if (p->ai_family == AF_INET) {
                 data.ip_addr = p;
+                inet_ntop(AF_INET, &(((struct sockaddr_in *)p->ai_addr)->sin_addr), data.hostaddr, INET_ADDRSTRLEN);
                 data.reverse_hostname = reverse_dns_lookup(p);
                 break;
             }
         }
     }
-    data.host = argv[1];
+    data.hostname = argv[1];
  
     //socket()
     data.sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -49,13 +49,13 @@ int main(int argc, char *argv[])
     {
         printf("\nSocket file descriptor not received!!\n");
         fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
-        return 0;
+    } else {
+        signal(SIGINT, intHandler);//catching interrupt
+        //send pings continuously
+        send_ping(&data);
     }
- 
-    signal(SIGINT, intHandler);//catching interrupt
- 
-    //send pings continuously
-    send_ping(&data);
+    if (!data.is_addr)
+        free(data.reverse_hostname);    
     freeaddrinfo(ip_addr);
      
     return 0;

@@ -46,14 +46,13 @@ int dns_lookup(char *addr_host, struct addrinfo** res)
 char* reverse_dns_lookup(struct addrinfo *p)
 {
     char hbuf[NI_MAXHOST];
-    char sbuf[NI_MAXSERV];
     char *ret_buf;
     int status;
 
     printf("\nResolving reverseDNS..\n");
-    status = getnameinfo(p->ai_addr, p->ai_addrlen, hbuf, NI_MAXHOST, sbuf, NI_MAXSERV, 0);
+    status = getnameinfo(p->ai_addr, p->ai_addrlen, hbuf, NI_MAXHOST, NULL, 0, 0);
     if (status == 0) {
-        printf("Hostname/Serv: %s - %s\n", hbuf, sbuf);
+        printf("Hostname: %s\n", hbuf);
     } else {
         fprintf(stderr, "getnameinfo: %s\n", gai_strerror(status));
     }
