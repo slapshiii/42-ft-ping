@@ -30,7 +30,7 @@ int dns_lookup(char *addr_host, struct addrinfo** res)
 {
     struct addrinfo hints;
     int status;
-    memset(&hints, 0, sizeof hints);
+    ft_memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
@@ -57,7 +57,7 @@ char* reverse_dns_lookup(struct addrinfo *p)
         fprintf(stderr, "getnameinfo: %s\n", gai_strerror(status));
     }
     ret_buf = (char*)malloc((strlen(hbuf) +1)*sizeof(char) );
-    strcpy(ret_buf, hbuf);
+    ft_strcpy(ret_buf, hbuf);
     return ret_buf;
 }
 

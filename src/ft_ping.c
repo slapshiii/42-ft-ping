@@ -22,16 +22,17 @@ void send_ping(ping_data *data)
 	socklen_t addr_len;
     struct ping_pkt pckt;
     struct sockaddr_in r_addr;
-    struct timespec time_start, time_end, tfs, tfe;
+    // struct timespec time_start, time_end, tfs, tfe;
+
     long double rtt_msec=0;
     long double total_msec=0;
     struct timeval tv_out;
+    struct timeval tv_start, tv_end, tv_fs, tv_fe;
     tv_out.tv_sec = RECV_TIMEOUT;
     tv_out.tv_usec = 0;
 	struct sockaddr_in *ping_addr = (struct sockaddr_in *)data->ip_addr->ai_addr;
  
-    clock_gettime(CLOCK_MONOTONIC, &tfs);
- 
+    gettimeofday(&tv_fs, NULL);
      
     // set socket options at ip to TTL and value to 64,
     // change to what you want by setting ttl_val
@@ -52,7 +53,7 @@ void send_ping(ping_data *data)
         flag=1;
       
         //filling packet
-        bzero(&pckt, sizeof(pckt));
+        ft_bzero(&pckt, sizeof(pckt));
          
         pckt.hdr.type = ICMP_ECHO;
         pckt.hdr.rest.echo.id = getpid();
@@ -68,8 +69,8 @@ void send_ping(ping_data *data)
         usleep(PING_SLEEP_RATE);
  
         //send packet
-        clock_gettime(CLOCK_MONOTONIC, &time_start);
-        if ( sendto(data->sockfd, &pckt, sizeof(pckt), 0,
+        gettimeofday(&tv_start, NULL);
+        if (sendto(data->sockfd, &pckt, sizeof(pckt), 0,
            (struct sockaddr*) ping_addr,
             sizeof(*ping_addr)) <= 0)
         {
@@ -89,10 +90,10 @@ void send_ping(ping_data *data)
  
         else
         {
-            clock_gettime(CLOCK_MONOTONIC, &time_end);
-             
-            double timeElapsed = ((double)(time_end.tv_nsec - time_start.tv_nsec))/1000000.0;
-            rtt_msec = (time_end.tv_sec-time_start.tv_sec) * 1000.0 + timeElapsed;
+            gettimeofday(&tv_end, NULL);
+
+            double timeElapsed = ((double)(tv_end.tv_usec - tv_start.tv_usec))/1000.0;
+            rtt_msec = (tv_end.tv_sec-tv_start.tv_sec) * 1000.0 + timeElapsed;
              
             // if packet was not sent, don't receive
             if(flag)
@@ -112,13 +113,13 @@ void send_ping(ping_data *data)
             }
         }   
     }
-    clock_gettime(CLOCK_MONOTONIC, &tfe);
-    double timeElapsed = ((double)(tfe.tv_nsec - tfs.tv_nsec))/1000000.0;
+    gettimeofday(&tv_fe, NULL);
+    double timeElapsed = ((double)(tv_fe.tv_usec - tv_fs.tv_usec))/1000.0;
      
-    total_msec = (tfe.tv_sec-tfs.tv_sec)*1000.0+timeElapsed;
+    total_msec = (tv_fe.tv_sec-tv_fs.tv_sec) * 1000.0 + timeElapsed;
                     
     printf("\n=== %s ping statistics ===\n", data->hostname);
-    printf("\n%d packets sent, %d packets received, %f percent packet loss. Total time: %Lf ms.\n\n",
+    printf("\n%d packets sent, %d packets received, %.0f%% packet loss. Total time: %.0Lf ms.\n\n",
            msg_count, msg_received_count,
            ((msg_count - msg_received_count)/msg_count) * 100.0,
           total_msec);
