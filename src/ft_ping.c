@@ -144,7 +144,7 @@ void send_ping(ping_data *data)
 
 		pckt->hdr.type = ICMP_ECHO;
 		pckt->hdr.rest.echo.id = getpid();
-		pckt->hdr.rest.echo.sequence = msg_count++;
+		pckt->hdr.rest.echo.sequence = ++msg_count;
 		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
 
 		// send packet
