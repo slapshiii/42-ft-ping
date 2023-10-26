@@ -33,20 +33,22 @@
 #endif
 
 // Define the Packet Constants
-#define PING_PKT_S  // ping packet size
-#define PING_HDR 8
+#define PING_PKT_SIZE data->pktsize
+#define PING_HDR sizeof(struct icmphdr)
 #define PORT_NO 0	  // Automatic port number
 #define PING_SLEEP_RATE 1000000
 #define RECV_TIMEOUT 1 // Gives the timeout delay for receiving packets in seconds
+#define PING_SIZE (PING_HDR + PING_PKT_SIZE)
 
-#define MIN_IPHDR 20
+#define IP_HDR sizeof(struct iphdr)
 #define IPHDR_LEN(h) (((h).verlen & 0b1111) * 4)
+#define IP_SIZE (IP_HDR + PING_SIZE)
 
 // ping packet structure
 struct ping_pkt
 {
 	struct icmphdr hdr;
-	char msg*;
+	char *msg;
 };
 
 struct iphdr
@@ -66,7 +68,7 @@ struct iphdr
 struct ip_pkt
 {
 	struct iphdr hdr;
-	char data*;
+	char *data;
 };
 
 typedef struct ping_data_s
@@ -96,9 +98,10 @@ void send_ping(ping_data *data);
 
 void parse_arg(int ac, char **av, ping_data *data);
 void DumpHex(const void *data, size_t size);
-int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppckt);
+int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppckt, int size);
 
 void DumpIpPck(struct ip_pkt data);
+void DumpPingPck(struct ping_pkt data);
 int mypow(int x, int n);
 
 #endif // FT_PING_H

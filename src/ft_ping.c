@@ -15,7 +15,7 @@ void parse_arg(int ac, char **av, ping_data *res)
 		printf("%s: usage error: Destination address required\n", av[0]);
 		exit(1);
 	}
-	res->interval.tv_usec = 1000000;
+	res->interval.tv_usec = 1000;
 	res->interval.tv_sec = 0;
 	res->ttl = 128;
 	res->count = -1;
@@ -65,13 +65,30 @@ void parse_arg(int ac, char **av, ping_data *res)
 	}
 }
 
+int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
+{
+	struct msghdr msg;
+	struct iovec iov[1];
+	ft_bzero(&msg, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	iov[0].iov_base = ippckt;
+	iov[0].iov_len = size;
+	if (recvmsg(fd, &msg, 0) < 0)
+	{
+		printf("\nPacket receive failed! %s\n", strerror(errno));
+	}
+	ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
+	ft_memcpy(ppkt, (void*)ippckt + IP_HDR, size - IP_HDR);
+	return (1);
+}
+
 void send_ping(ping_data *data)
 {
 	int msg_count = 0, flag = 1,
 		msg_received_count = 0, on = 1;
-	long unsigned int i;
-	struct ping_pkt pckt, res_ping;
-	struct ip_pkt res_ip;
+	struct ping_pkt *pckt, *res_ping;
+	struct ip_pkt *res_ip;
 
 	long double rtt_msec = 0;
 	long double total_msec = 0;
@@ -81,8 +98,8 @@ void send_ping(ping_data *data)
 	tv_out.tv_usec = 0;
 	struct sockaddr_in *ping_addr = (struct sockaddr_in *)data->ip_addr->ai_addr;
 
+	printf("PING %s (%s) %d(%ld) bytes of data.\n", data->hostname, data->hostaddr, data->pktsize, data->pktsize+PING_HDR+IP_HDR);
 	gettimeofday(&tv_fs, NULL);
-
 	if (setsockopt(data->sockfd, SOL_IP, IP_TTL, &data->ttl, sizeof(data->ttl)) != 0)
 	{
 		printf("\nSetting socket options to TTL failed! %s\n", strerror(errno));
@@ -95,8 +112,12 @@ void send_ping(ping_data *data)
 		return;
 	}
 	// setting timeout of recv setting
-	setsockopt(data->sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_out, sizeof tv_out);
+	setsockopt(data->sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv_out, sizeof tv_out);
+	setsockopt(data->sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv_out, sizeof tv_out);
 
+	pckt = (struct ping_pkt*)malloc(PING_SIZE);
+	res_ping = (struct ping_pkt*)malloc(PING_SIZE);
+	res_ip = (struct ip_pkt*)malloc(IP_SIZE);
 	// send icmp packet in an infinite loop
 	while (pingloop && data->count)
 	{
@@ -106,60 +127,50 @@ void send_ping(ping_data *data)
 		flag = 1;
 
 		// filling packet
-		ft_bzero(&pckt, sizeof(pckt));
-		ft_bzero(&res_ip, sizeof(res_ip));
-		ft_bzero(&res_ping, sizeof(res_ping));
+		ft_bzero(pckt, PING_SIZE);
+		ft_bzero(res_ping, PING_SIZE);
+		ft_bzero(res_ip, IP_SIZE);
 
 		if (msg_count) {
 			sleep(data->interval.tv_sec);
 			usleep(data->interval.tv_usec*1000);
 		}
 
-		pckt.hdr.type = ICMP_ECHO;
-		pckt.hdr.rest.echo.id = getpid();
-
-		for (i = 0; i < sizeof(pckt.msg) - 1; i++)
-			pckt.msg[i] = i + '0';
-
-		pckt.msg[i] = 0;
-		pckt.hdr.rest.echo.sequence = msg_count++;
-		pckt.hdr.checksum = checksum(&pckt, sizeof(pckt));
+		pckt->hdr.type = ICMP_ECHO;
+		pckt->hdr.rest.echo.id = getpid();
+		pckt->hdr.rest.echo.sequence = msg_count++;
+		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
 
 		// send packet
 		gettimeofday(&tv_start, NULL);
 
-		if (sendto(data->sockfd, &pckt, sizeof(pckt), 0,
-				   (struct sockaddr *)ping_addr,
-				   sizeof(*ping_addr)) <= 0)
+		if (sendto(data->sockfd, pckt, PING_SIZE, 0, (struct sockaddr *)ping_addr, sizeof(*ping_addr)) <= 0)
 		{
 			printf("\nPacket Sending Failed!\n");
 			flag = 0;
 		}
 
 		// receive packet
-		while (pingloop && ((receive_pckt(data->sockfd, &res_ip, &res_ping) <= 0 && msg_count > 1) || res_ping.hdr.rest.echo.id != pckt.hdr.rest.echo.id))
+		while (pingloop && ((receive_pckt(data->sockfd, res_ip, res_ping, IP_SIZE) <= 0 && msg_count > 1) || res_ping->hdr.rest.echo.id != pckt->hdr.rest.echo.id))
 		{
 			; // drop packet
 		}
 		if (pingloop)
 		{
 			gettimeofday(&tv_end, NULL);
-
 			double timeElapsed = ((double)(tv_end.tv_usec - tv_start.tv_usec)) / 1000.0;
 			rtt_msec = (tv_end.tv_sec - tv_start.tv_sec) * 1000.0 + timeElapsed;
-
-			// if packet was not sent, don't receive
 			if (flag)
 			{
-				if (!(res_ping.hdr.type == 0 && res_ping.hdr.code == 0))
+				if (!(res_ping->hdr.type == 0 && res_ping->hdr.code == 0))
 				{
-					printf("Error..Packet received with ICMP type %d code %d\n", res_ping.hdr.type, res_ping.hdr.code);
+					printf("Error..Packet received with ICMP type %d code %d\n", res_ping->hdr.type, res_ping->hdr.code);
 				}
 				else
 				{
-					printf("%d bytes from %s (%s) icmp_seq=%d ttl=%d time=%.2Lf ms\n",
-						   PING_PKT_S, data->reverse_hostname, data->hostaddr,
-						   res_ping.hdr.rest.echo.sequence, res_ip.hdr.ttl, rtt_msec);
+					printf("%ld bytes from %s (%s) icmp_seq=%d ttl=%d time=%.2Lf ms\n",
+						   PING_SIZE, data->reverse_hostname, data->hostaddr,
+						   res_ping->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
 
 					msg_received_count++;
 				}
@@ -176,4 +187,9 @@ void send_ping(ping_data *data)
 		   msg_count, msg_received_count,
 		   ((msg_count - msg_received_count) / msg_count) * 100.0,
 		   total_msec);
+
+	free(pckt);
+	free(res_ping);
+	free(res_ip);
 }
+

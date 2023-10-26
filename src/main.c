@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     }
     if ((data.is_addr = is_valid_ipv4(data.hostname)) == 0)
     {
-        printf("[%d] IP for %s:\n", getpid(), data.hostname);
+        // printf("[%d] IP for %s:\n", getpid(), data.hostname); TODEL
         for (struct addrinfo *p = ip_addr; p != NULL; p = p->ai_next)
         {
             if (p->ai_family == AF_INET)

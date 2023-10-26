@@ -34,7 +34,7 @@ int dns_lookup(char *addr_host, struct addrinfo **res)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	printf("\nResolving DNS..\n");
+	// printf("\nResolving DNS..\n"); TODEL
 	if ((status = getaddrinfo(addr_host, NULL, &hints, res)) != 0)
 	{
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
@@ -50,13 +50,9 @@ char *reverse_dns_lookup(struct addrinfo *p)
 	char *ret_buf;
 	int status;
 
-	printf("\nResolving reverseDNS..\n");
+	// printf("\nResolving reverseDNS..\n"); TODEL
 	status = getnameinfo(p->ai_addr, p->ai_addrlen, hbuf, NI_MAXHOST, NULL, 0, 0);
-	if (status == 0)
-	{
-		printf("Hostname: %s\n", hbuf);
-	}
-	else
+	if (status != 0)
 	{
 		fprintf(stderr, "getnameinfo: %s\n", gai_strerror(status));
 	}
@@ -70,26 +66,6 @@ int is_valid_ipv4(char *ip_str)
 {
 	struct sockaddr_in sa;
 	return (inet_pton(AF_INET, ip_str, &(sa.sin_addr)) == 1);
-}
-
-int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt)
-{
-	struct msghdr msg;
-	struct iovec iov[1];
-	ft_bzero(&msg, sizeof(msg));
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 1;
-	iov[0].iov_base = ippckt;
-	iov[0].iov_len = sizeof(struct ip_pkt);
-
-	if (recvmsg(fd, &msg, 0) <= 0)
-	{
-		printf("\nPacket hdr receive failed! %s\n", strerror(errno));
-	}
-	ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
-	*ppkt = *(struct ping_pkt *)ippckt->data;
-	// DumpIpPck(*ippckt);
-	return (1);
 }
 
 void DumpHex(const void *data, size_t size)
@@ -135,7 +111,11 @@ void DumpHex(const void *data, size_t size)
 void DumpIpPck(struct ip_pkt data){
 	printf("\nversion:%d IHL:%d tos:%d len:%d", data.hdr.verlen>>4, data.hdr.verlen&15, data.hdr.tos_ecn, data.hdr.len);
 	printf("\nid:%d flag et offset:%d", data.hdr.id, data.hdr.flag_fragoff);
-	printf("\nttl:%d proto:%d checksum:%d", data.hdr.ttl, data.hdr.proto, data.hdr.checksum);
+	printf("\nttl:%d proto:%d checksum:%d\n", data.hdr.ttl, data.hdr.proto, data.hdr.checksum);
+}
+void DumpPingPck(struct ping_pkt data){
+	printf("\ntype:%d code:%d checksum:%d", data.hdr.type, data.hdr.code, data.hdr.checksum);
+	printf("\nid:%d seq num:%d\n", data.hdr.rest.echo.id, data.hdr.rest.echo.sequence);
 }
 
 int mypow(int x, int n) {
