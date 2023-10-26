@@ -19,19 +19,15 @@ int main(int argc, char *argv[])
     struct addrinfo *ip_addr;
     int status;
  
-    if(argc!=2)
-    {
-        printf("%s: usage error: Destination address required\n", argv[0]);
-        return (1);
-    }
-    status = dns_lookup(argv[1], &ip_addr);
+    data = parse_arg(argc, argv);
+    status = dns_lookup(data.hostname, &ip_addr);
     if(status != 0)
     {
-        printf("%s: %s: %s\n", argv[0], argv[1], gai_strerror(status));
+        printf("%s: %s: %s\n", argv[0], data.hostname, gai_strerror(status));
         return (2);
     }
-    if ((data.is_addr = is_valid_ipv4(argv[1])) == 0) {
-        printf("IP for %s:\n", argv[1]);
+    if ((data.is_addr = is_valid_ipv4(data.hostname)) == 0) {
+        printf("IP for %s:\n", data.hostname);
         for (struct addrinfo *p = ip_addr; p != NULL; p = p->ai_next) {
             if (p->ai_family == AF_INET) {
                 data.ip_addr = p;
@@ -41,13 +37,23 @@ int main(int argc, char *argv[])
             }
         }
     }
-    data.hostname = argv[1];
- 
-    //socket()
+
+    struct icmp_filter filter;
+    filter.data = ~(
+        // (1<<ICMP_SOURCE_QUENCH) |
+        // (1<<ICMP_DEST_UNREACH) |
+        // (1<<ICMP_TIME_EXCEEDED) |
+        // (1<<ICMP_PARAMETERPROB) |
+        // (1<<ICMP_REDIRECT) |
+        (1<<ICMP_ECHOREPLY));
+    //socket() IPPROTO_ICMP
     data.sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if(data.sockfd < 0)
     {
         printf("\nSocket file descriptor not received!!\n");
+        fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
+    } else if (setsockopt(data.sockfd, SOL_RAW, 1, (char*)&filter, sizeof(filter)) < 0) {
+        printf("\nSocket file descriptor options not set!!\n");
         fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
     } else {
         signal(SIGINT, intHandler);//catching interrupt

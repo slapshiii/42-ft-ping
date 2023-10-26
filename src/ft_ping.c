@@ -1,17 +1,42 @@
 #include "ft_ping.h"
 
-int	parse_arg(int ac, char **av) {
+static void    usage(char *name, int code) {
+    printf("\nUsage\n  %s [options] <destination>\n", name);
+    printf("\nOptions:\n");
+    exit(code);
+}
+
+ping_data	parse_arg(int ac, char **av) {
+    ping_data res;
+    ft_bzero(&res, sizeof(res));
+    if(ac < 2)
+    {
+        printf("%s: usage error: Destination address required\n", av[0]);
+        exit(1);
+    }
 	for (int i = 1; i < ac; i++) {
-		if (ft_strcmp(av[1], "-V") == 0) {
-			ft_putendl_fd("ping from ft_ping v1", 1);
-			exit(0);
-		} else if (ft_strcmp(av[1], "-v") == 0) {
-			;
-		} else if (ft_strcmp(av[1], "-h") == 0) {
-			return (1);
-		}
+		if ((av[i][0] == '-'))
+        {
+            switch (av[i][1])
+            {
+            case 'h':
+                usage(av[0], 0);
+                break;
+            case 'l': //set TTL
+                if (i+1 >= ac)
+                    usage(av[0], 1);
+                res.ttl = ft_atoi(av[++i]);
+                break;
+            
+            default:
+                usage(av[0], 1);
+                break;
+            }
+        } else {
+            res.hostname = av[i];
+        }
 	}
-	return (0);
+	return (res);
 }
 
 void send_ping(ping_data *data)
@@ -19,10 +44,8 @@ void send_ping(ping_data *data)
     int ttl_val=64, msg_count=0, flag=1,
                msg_received_count=0;
     long unsigned int i;
-	socklen_t addr_len;
-    struct ping_pkt pckt;
-    struct sockaddr_in r_addr;
-    // struct timespec time_start, time_end, tfs, tfe;
+    struct ping_pkt pckt, res_ping;
+    struct ip_pkt   res_ip;
 
     long double rtt_msec=0;
     long double total_msec=0;
@@ -54,6 +77,8 @@ void send_ping(ping_data *data)
       
         //filling packet
         ft_bzero(&pckt, sizeof(pckt));
+        ft_bzero(&res_ip, sizeof(res_ip));
+        ft_bzero(&res_ping, sizeof(res_ping));
          
         pckt.hdr.type = ICMP_ECHO;
         pckt.hdr.rest.echo.id = getpid();
@@ -63,33 +88,31 @@ void send_ping(ping_data *data)
          
         pckt.msg[i] = 0;
         pckt.hdr.rest.echo.sequence = msg_count++;
-        pckt.hdr.checksum = checksum(&pckt, sizeof(pckt));
- 
+        pckt.hdr.checksum = checksum(&pckt, sizeof(pckt)); 
  
         usleep(PING_SLEEP_RATE);
  
         //send packet
         gettimeofday(&tv_start, NULL);
+
+        printf("[%d][%d]\n", pckt.hdr.rest.echo.id , pckt.hdr.rest.echo.sequence);
         if (sendto(data->sockfd, &pckt, sizeof(pckt), 0,
-           (struct sockaddr*) ping_addr,
+            (struct sockaddr*) ping_addr,
             sizeof(*ping_addr)) <= 0)
         {
             printf("\nPacket Sending Failed!\n");
             flag=0;
         }
- 
+
         //receive packet
-        addr_len=sizeof(r_addr);
- 
-        if ( recvfrom(data->sockfd, &pckt, sizeof(pckt), 0,
-             (struct sockaddr*)&r_addr, &addr_len) <= 0
-              && msg_count>1)
+        while ((receive_pckt(data->sockfd, &res_ip, &res_ping) <= 0
+            && msg_count>1) || res_ping.hdr.rest.echo.id != pckt.hdr.rest.echo.id)
         {
-            printf("\nPacket receive failed!\n");
+            ; //drop packet
         }
- 
-        else
+        if (res_ping.hdr.type == 0)
         {
+            printf("[%d][%d]\n", res_ping.hdr.rest.echo.id, res_ping.hdr.rest.echo.sequence);
             gettimeofday(&tv_end, NULL);
 
             double timeElapsed = ((double)(tv_end.tv_usec - tv_start.tv_usec))/1000.0;
@@ -98,9 +121,9 @@ void send_ping(ping_data *data)
             // if packet was not sent, don't receive
             if(flag)
             {
-                if(!(pckt.hdr.type ==69 && pckt.hdr.code==0))
+                if(!(res_ping.hdr.type ==0 && res_ping.hdr.code==0))
                 {
-                    printf("Error..Packet received with ICMP type %d code %d\n", pckt.hdr.type, pckt.hdr.code);
+                    printf("Error..Packet received with ICMP type %d code %d\n", res_ping.hdr.type, res_ping.hdr.code);
                 }
                 else
                 {
@@ -111,7 +134,7 @@ void send_ping(ping_data *data)
                     msg_received_count++;
                 }
             }
-        }   
+        }
     }
     gettimeofday(&tv_fe, NULL);
     double timeElapsed = ((double)(tv_fe.tv_usec - tv_fs.tv_usec))/1000.0;

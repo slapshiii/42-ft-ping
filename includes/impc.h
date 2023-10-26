@@ -69,4 +69,8 @@ struct icmphdr
 #define ICMP_EXC_TTL		0	/* TTL count exceeded		*/
 #define ICMP_EXC_FRAGTIME	1	/* Fragment Reass time exceeded	*/
 
+struct icmp_filter {
+  uint32_t  data;
+};
+
 #endif //IMPC_H

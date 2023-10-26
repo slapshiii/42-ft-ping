@@ -61,10 +61,52 @@ char* reverse_dns_lookup(struct addrinfo *p)
     return ret_buf;
 }
 
+// Checks if the string is a valid ipv4 address
 int is_valid_ipv4(char *ip_str)
 {
     struct sockaddr_in sa;
     return (inet_pton(AF_INET, ip_str, &(sa.sin_addr)) == 1);
 }
 
-// void print_statistics()
+int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt)
+{
+    if (recvfrom(fd, ippckt, MIN_IPHDR + PING_PKT_S, 0, NULL, NULL) <= 0)
+    {
+        printf("\nPacket hdr receive failed!\n");
+		ppkt->hdr.type = 1;
+		return (-1);
+    }
+    ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
+	*ppkt = *(struct ping_pkt*)ippckt->data;
+    return (1);
+}
+
+void DumpHex(const void* data, size_t size) {
+	char ascii[17];
+	size_t i, j;
+	ascii[16] = '\0';
+	for (i = 0; i < size; ++i) {
+		printf("%02X ", ((unsigned char*)data)[i]);
+		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
+			ascii[i % 16] = ((unsigned char*)data)[i];
+		} else {
+			ascii[i % 16] = '.';
+		}
+		if ((i+1) % 8 == 0 || i+1 == size) {
+			printf(" ");
+			if ((i+1) % 16 == 0) {
+				printf("|  %s \n", ascii);
+			} else if (i+1 == size) {
+				ascii[(i+1) % 16] = '\0';
+				if ((i+1) % 16 <= 8) {
+					printf(" ");
+				}
+				for (j = (i+1) % 16; j < 16; ++j) {
+					printf("   ");
+				}
+				printf("|  %s \n", ascii);
+			}
+		}
+	}
+}
+
