@@ -69,17 +69,26 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
-	ft_bzero(&msg, sizeof(msg));
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 1;
-	iov[0].iov_base = ippckt;
-	iov[0].iov_len = size;
-	if (recvmsg(fd, &msg, 0) < 0)
+	struct ping_pkt tmp;
+	int		flag = 1;
+
+	while (pingloop && flag)
 	{
-		printf("\nPacket receive failed! %s\n", strerror(errno));
+		ft_bzero(&msg, sizeof(msg));
+		msg.msg_iov = iov;
+		msg.msg_iovlen = 1;
+		iov[0].iov_base = ippckt;
+		iov[0].iov_len = size;
+		recvmsg(fd, &msg, 0);
+		ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
+		ft_memcpy(&tmp, (void*)ippckt + IP_HDR, size - IP_HDR);
+		if (tmp.hdr.type == 0 && tmp.hdr.code == 0 && tmp.hdr.rest.echo.id == ppkt->hdr.rest.echo.id){
+			flag = 0;
+		} else if (tmp.hdr.type == 11 && tmp.hdr.code == 0) {
+			flag = 0;
+		}
 	}
-	ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
-	ft_memcpy(ppkt, (void*)ippckt + IP_HDR, size - IP_HDR);
+	ft_memcpy(ppkt, &tmp, size - IP_HDR);
 	return (1);
 }
 
@@ -87,7 +96,7 @@ void send_ping(ping_data *data)
 {
 	int msg_count = 0, flag = 1,
 		msg_received_count = 0, on = 1;
-	struct ping_pkt *pckt, *res_ping;
+	struct ping_pkt *pckt;
 	struct ip_pkt *res_ip;
 
 	long double rtt_msec = 0;
@@ -100,13 +109,12 @@ void send_ping(ping_data *data)
 
 	printf("PING %s (%s) %d(%ld) bytes of data.\n", data->hostname, data->hostaddr, data->pktsize, data->pktsize+PING_HDR+IP_HDR);
 	gettimeofday(&tv_fs, NULL);
-	if (setsockopt(data->sockfd, SOL_IP, IP_TTL, &data->ttl, sizeof(data->ttl)) != 0)
+	if (setsockopt(data->sockfd, IPPROTO_IP, IP_TTL, (char*)&data->ttl, sizeof(data->ttl)) != 0)
 	{
 		printf("\nSetting socket options to TTL failed! %s\n", strerror(errno));
 		return;
 	}
-	if (setsockopt(data->sockfd, SOL_IP, IP_RECVERR,
-				   &on, sizeof(on)) != 0)
+	if (setsockopt(data->sockfd, IPPROTO_IP, IP_RECVERR, &on, sizeof(on)) != 0)
 	{
 		printf("\nSetting socket options to REVCERR failed! %s\n", strerror(errno));
 		return;
@@ -116,7 +124,6 @@ void send_ping(ping_data *data)
 	setsockopt(data->sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv_out, sizeof tv_out);
 
 	pckt = (struct ping_pkt*)malloc(PING_SIZE);
-	res_ping = (struct ping_pkt*)malloc(PING_SIZE);
 	res_ip = (struct ip_pkt*)malloc(IP_SIZE);
 	// send icmp packet in an infinite loop
 	while (pingloop && data->count)
@@ -128,7 +135,6 @@ void send_ping(ping_data *data)
 
 		// filling packet
 		ft_bzero(pckt, PING_SIZE);
-		ft_bzero(res_ping, PING_SIZE);
 		ft_bzero(res_ip, IP_SIZE);
 
 		if (msg_count) {
@@ -151,27 +157,26 @@ void send_ping(ping_data *data)
 		}
 
 		// receive packet
-		while (pingloop && ((receive_pckt(data->sockfd, res_ip, res_ping, IP_SIZE) <= 0 && msg_count > 1) || res_ping->hdr.rest.echo.id != pckt->hdr.rest.echo.id))
-		{
-			; // drop packet
-		}
-		if (pingloop)
+		if (receive_pckt(data->sockfd, res_ip, pckt, IP_SIZE) > 0 && msg_count > 0)
 		{
 			gettimeofday(&tv_end, NULL);
 			double timeElapsed = ((double)(tv_end.tv_usec - tv_start.tv_usec)) / 1000.0;
 			rtt_msec = (tv_end.tv_sec - tv_start.tv_sec) * 1000.0 + timeElapsed;
 			if (flag)
 			{
-				if (!(res_ping->hdr.type == 0 && res_ping->hdr.code == 0))
+				if ((pckt->hdr.type == 11 && pckt->hdr.code == 0))
 				{
-					printf("Error..Packet received with ICMP type %d code %d\n", res_ping->hdr.type, res_ping->hdr.code);
+					printf("From %s (%s) icmp_seq=%d Time to live exceeded\n", data->reverse_hostname, data->hostaddr, pckt->hdr.rest.echo.sequence);
+				}
+				else if (!(pckt->hdr.type == 0 && pckt->hdr.code == 0))
+				{
+					printf("Error..Packet received with ICMP type %d code %d\n", pckt->hdr.type, pckt->hdr.code);
 				}
 				else
 				{
 					printf("%ld bytes from %s (%s) icmp_seq=%d ttl=%d time=%.2Lf ms\n",
 						   PING_SIZE, data->reverse_hostname, data->hostaddr,
-						   res_ping->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
-
+						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
 					msg_received_count++;
 				}
 			}
@@ -189,7 +194,6 @@ void send_ping(ping_data *data)
 		   total_msec);
 
 	free(pckt);
-	free(res_ping);
 	free(res_ip);
 }
 
