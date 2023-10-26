@@ -75,18 +75,11 @@ typedef struct  ping_data_s
     int             sockfd;
     int             is_addr;
     char            hostaddr[INET_ADDRSTRLEN];
+    int             count;
     int             ttl;
+    int             pktsize;
+    int             interval;
 }               ping_data;
-
-typedef struct  arg_s
-{
-    int count;
-    int ttl;
-    int interval;
-    int paquetsize;
-
-
-}               arg;
 
 extern int pingloop;
 
