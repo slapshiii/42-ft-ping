@@ -7,15 +7,20 @@ static void usage(char *name, int code)
 	exit(code);
 }
 
-ping_data parse_arg(int ac, char **av)
+void parse_arg(int ac, char **av, ping_data *res)
 {
-	ping_data res;
-	ft_bzero(&res, sizeof(res));
+	ft_bzero(res, sizeof(res));
 	if (ac < 2)
 	{
 		printf("%s: usage error: Destination address required\n", av[0]);
 		exit(1);
 	}
+	res->interval.tv_usec = 1000000;
+	res->interval.tv_sec = 0;
+	res->ttl = 128;
+	res->count = -1;
+	res->timeout = 1;
+	res->pktsize = 56;
 	for (int i = 1; i < ac; i++)
 	{
 		if ((av[i][0] == '-'))
@@ -23,22 +28,29 @@ ping_data parse_arg(int ac, char **av)
 			switch (av[i][1])
 			{
 			case 'c': //set count
-                if (i+1 >= ac || (res.count = ft_atoi(av[++i])) == 0)
+                if (i+1 >= ac || (res->count = ft_atoi(av[++i])) == 0)
                     usage(av[0], 1);
                 break;
 			case 'h':
 				usage(av[0], 0);
 				break;
 			case 'i': // set interval
-				if (i + 1 >= ac || (res.interval = ft_atoi(av[++i])) == 0)
+				if (i + 1 >= ac)
 					usage(av[0], 1);
+				res->interval.tv_sec = ft_atoi(av[++i]);
+				char *frac = ft_strrchr(av[i], '.');
+				res->interval.tv_usec = (frac)?ft_atoi(frac + 1) * (mypow(10, 4-ft_strlen(frac))):0;
 				break;
 			case 'l': // set TTL
-				if (i + 1 >= ac || (res.ttl = ft_atoi(av[++i])) == 0)
+				if (i + 1 >= ac || (res->ttl = ft_atoi(av[++i])) == 0)
 					usage(av[0], 1);
 				break;
 			case 's': // set packetsize
-				if (i + 1 >= ac || (res.pktsize = ft_atoi(av[++i])) == 0)
+				if (i + 1 >= ac || (res->pktsize = ft_atoi(av[++i])) == 0)
+					usage(av[0], 1);
+				break;
+			case 'W': // set timeout
+				if (i + 1 >= ac || (res->timeout = ft_atoi(av[++i])) == 0)
 					usage(av[0], 1);
 				break;
 			default:
@@ -48,16 +60,15 @@ ping_data parse_arg(int ac, char **av)
 		}
 		else
 		{
-			res.hostname = av[i];
+			res->hostname = av[i];
 		}
 	}
-	return (res);
 }
 
 void send_ping(ping_data *data)
 {
-	int ttl_val = 64, msg_count = 0, flag = 1,
-		msg_received_count = 0;
+	int msg_count = 0, flag = 1,
+		msg_received_count = 0, on = 1;
 	long unsigned int i;
 	struct ping_pkt pckt, res_ping;
 	struct ip_pkt res_ip;
@@ -66,27 +77,31 @@ void send_ping(ping_data *data)
 	long double total_msec = 0;
 	struct timeval tv_out;
 	struct timeval tv_start, tv_end, tv_fs, tv_fe;
-	tv_out.tv_sec = RECV_TIMEOUT;
+	tv_out.tv_sec = data->timeout;
 	tv_out.tv_usec = 0;
 	struct sockaddr_in *ping_addr = (struct sockaddr_in *)data->ip_addr->ai_addr;
 
 	gettimeofday(&tv_fs, NULL);
 
-	// set socket options at ip to TTL and value to 64,
-	// change to what you want by setting ttl_val
-	if (setsockopt(data->sockfd, SOL_IP, IP_TTL,
-				   &ttl_val, sizeof(ttl_val)) != 0)
+	if (setsockopt(data->sockfd, SOL_IP, IP_TTL, &data->ttl, sizeof(data->ttl)) != 0)
 	{
-		printf("\nSetting socket options to TTL failed!\n");
+		printf("\nSetting socket options to TTL failed! %s\n", strerror(errno));
+		return;
+	}
+	if (setsockopt(data->sockfd, SOL_IP, IP_RECVERR,
+				   &on, sizeof(on)) != 0)
+	{
+		printf("\nSetting socket options to REVCERR failed! %s\n", strerror(errno));
 		return;
 	}
 	// setting timeout of recv setting
-	setsockopt(data->sockfd, SOL_SOCKET, SO_RCVTIMEO,
-			   (const char *)&tv_out, sizeof tv_out);
+	setsockopt(data->sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_out, sizeof tv_out);
 
 	// send icmp packet in an infinite loop
-	while (pingloop)
+	while (pingloop && data->count)
 	{
+		if (data->count > 0)
+			data->count--;
 		// flag is whether packet was sent or not
 		flag = 1;
 
@@ -94,6 +109,11 @@ void send_ping(ping_data *data)
 		ft_bzero(&pckt, sizeof(pckt));
 		ft_bzero(&res_ip, sizeof(res_ip));
 		ft_bzero(&res_ping, sizeof(res_ping));
+
+		if (msg_count) {
+			sleep(data->interval.tv_sec);
+			usleep(data->interval.tv_usec*1000);
+		}
 
 		pckt.hdr.type = ICMP_ECHO;
 		pckt.hdr.rest.echo.id = getpid();
@@ -104,8 +124,6 @@ void send_ping(ping_data *data)
 		pckt.msg[i] = 0;
 		pckt.hdr.rest.echo.sequence = msg_count++;
 		pckt.hdr.checksum = checksum(&pckt, sizeof(pckt));
-
-		usleep(PING_SLEEP_RATE);
 
 		// send packet
 		gettimeofday(&tv_start, NULL);
@@ -119,11 +137,11 @@ void send_ping(ping_data *data)
 		}
 
 		// receive packet
-		while ((receive_pckt(data->sockfd, &res_ip, &res_ping) <= 0 && msg_count > 1) || res_ping.hdr.rest.echo.id != pckt.hdr.rest.echo.id)
+		while (pingloop && ((receive_pckt(data->sockfd, &res_ip, &res_ping) <= 0 && msg_count > 1) || res_ping.hdr.rest.echo.id != pckt.hdr.rest.echo.id))
 		{
 			; // drop packet
 		}
-		if (res_ping.hdr.type == 0)
+		if (pingloop)
 		{
 			gettimeofday(&tv_end, NULL);
 

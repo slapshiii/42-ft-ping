@@ -74,14 +74,21 @@ int is_valid_ipv4(char *ip_str)
 
 int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt)
 {
-	if (recvfrom(fd, ippckt, MIN_IPHDR + PING_PKT_S, 0, NULL, NULL) <= 0)
+	struct msghdr msg;
+	struct iovec iov[1];
+	ft_bzero(&msg, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	iov[0].iov_base = ippckt;
+	iov[0].iov_len = sizeof(struct ip_pkt);
+
+	if (recvmsg(fd, &msg, 0) <= 0)
 	{
-		printf("\nPacket hdr receive failed!\n");
-		ppkt->hdr.type = 1;
-		return (-1);
+		printf("\nPacket hdr receive failed! %s\n", strerror(errno));
 	}
 	ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
 	*ppkt = *(struct ping_pkt *)ippckt->data;
+	// DumpIpPck(*ippckt);
 	return (1);
 }
 
@@ -123,4 +130,18 @@ void DumpHex(const void *data, size_t size)
 			}
 		}
 	}
+}
+
+void DumpIpPck(struct ip_pkt data){
+	printf("\nversion:%d IHL:%d tos:%d len:%d", data.hdr.verlen>>4, data.hdr.verlen&15, data.hdr.tos_ecn, data.hdr.len);
+	printf("\nid:%d flag et offset:%d", data.hdr.id, data.hdr.flag_fragoff);
+	printf("\nttl:%d proto:%d checksum:%d", data.hdr.ttl, data.hdr.proto, data.hdr.checksum);
+}
+
+int mypow(int x, int n) {
+	int res = 1;
+	for (int i = 0; i < n; ++i) {
+		res *= x;
+	}
+	return (res);
 }

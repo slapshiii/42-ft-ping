@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     struct addrinfo *ip_addr;
     int status;
 
-    data = parse_arg(argc, argv);
+    parse_arg(argc, argv, &data);
     status = dns_lookup(data.hostname, &ip_addr);
     if (status != 0)
     {
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     }
     if ((data.is_addr = is_valid_ipv4(data.hostname)) == 0)
     {
-        printf("IP for %s:\n", data.hostname);
+        printf("[%d] IP for %s:\n", getpid(), data.hostname);
         for (struct addrinfo *p = ip_addr; p != NULL; p = p->ai_next)
         {
             if (p->ai_family == AF_INET)
@@ -41,19 +41,19 @@ int main(int argc, char *argv[])
         }
     }
 
-    struct icmp_filter filter;
-    filter.data = ~((1 << ICMP_ECHOREPLY));
+    // struct icmp_filter filter;
+    // filter.data = ~((1 << ICMP_ECHOREPLY));
     data.sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (data.sockfd < 0)
     {
         printf("\nSocket file descriptor not received!!\n");
         fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
     }
-    else if (setsockopt(data.sockfd, SOL_RAW, 1, (char *)&filter, sizeof(filter)) < 0)
-    {
-        printf("\nSocket file descriptor options not set!!\n");
-        fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
-    }
+    // else if (setsockopt(data.sockfd, SOL_RAW, 1, (char *)&filter, sizeof(filter)) < 0)
+    // {
+    //     printf("\nSocket file descriptor options not set!!\n");
+    //     fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
+    // }
     else
     {
         signal(SIGINT, intHandler); // catching interrupt
