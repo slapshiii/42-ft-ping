@@ -80,6 +80,7 @@ typedef struct ping_data_s
 	int				is_addr;
 	char			hostaddr[INET_ADDRSTRLEN];
 	int				count;
+	int				deadline;
 	int				ttl;
 	int				pktsize;
 	int				timeout;

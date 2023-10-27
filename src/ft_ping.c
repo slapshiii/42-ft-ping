@@ -21,6 +21,7 @@ void parse_arg(int ac, char **av, ping_data *res)
 	res->count = -1;
 	res->timeout = 1;
 	res->pktsize = 56;
+	res->deadline = -1;
 	for (int i = 1; i < ac; i++)
 	{
 		if ((av[i][0] == '-'))
@@ -47,6 +48,10 @@ void parse_arg(int ac, char **av, ping_data *res)
 				break;
 			case 's': // set packetsize
 				if (i + 1 >= ac || (res->pktsize = ft_atoi(av[++i])) == 0)
+					usage(av[0], 1);
+				break;
+			case 'w': // set deadline
+				if (i + 1 >= ac || (res->deadline = ft_atoi(av[++i])) == 0)
 					usage(av[0], 1);
 				break;
 			case 'W': // set timeout
@@ -142,13 +147,16 @@ void send_ping(ping_data *data)
 			usleep(data->interval.tv_usec*1000);
 		}
 
+		// send packet
+		gettimeofday(&tv_start, NULL);
+		if (data->deadline > 0 && tv_start.tv_sec - tv_fs.tv_sec >= data->deadline) {
+			pingloop = 0;
+			break;
+		}
 		pckt->hdr.type = ICMP_ECHO;
 		pckt->hdr.rest.echo.id = getpid();
 		pckt->hdr.rest.echo.sequence = ++msg_count;
 		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
-
-		// send packet
-		gettimeofday(&tv_start, NULL);
 
 		if (sendto(data->sockfd, pckt, PING_SIZE, 0, (struct sockaddr *)ping_addr, sizeof(*ping_addr)) <= 0)
 		{
