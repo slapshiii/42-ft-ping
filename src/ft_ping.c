@@ -1,75 +1,5 @@
 #include "ft_ping.h"
 
-static void usage(char *name, int code)
-{
-	printf("\nUsage\n  %s [options] <destination>\n", name);
-	printf("\nOptions:\n");
-	exit(code);
-}
-
-void parse_arg(int ac, char **av, ping_data *res)
-{
-	ft_bzero(res, sizeof(res));
-	if (ac < 2)
-	{
-		printf("%s: usage error: Destination address required\n", av[0]);
-		exit(1);
-	}
-	res->interval.tv_usec = 1000;
-	res->interval.tv_sec = 0;
-	res->ttl = 128;
-	res->count = -1;
-	res->timeout = 1;
-	res->pktsize = 56;
-	res->deadline = -1;
-	for (int i = 1; i < ac; i++)
-	{
-		if ((av[i][0] == '-'))
-		{
-			switch (av[i][1])
-			{
-			case 'c': //set count
-                if (i+1 >= ac || (res->count = ft_atoi(av[++i])) == 0)
-                    usage(av[0], 1);
-                break;
-			case 'h':
-				usage(av[0], 0);
-				break;
-			case 'i': // set interval
-				if (i + 1 >= ac)
-					usage(av[0], 1);
-				res->interval.tv_sec = ft_atoi(av[++i]);
-				char *frac = ft_strrchr(av[i], '.');
-				res->interval.tv_usec = (frac)?ft_atoi(frac + 1) * (mypow(10, 4-ft_strlen(frac))):0;
-				break;
-			case 'l': // set TTL
-				if (i + 1 >= ac || (res->ttl = ft_atoi(av[++i])) == 0)
-					usage(av[0], 1);
-				break;
-			case 's': // set packetsize
-				if (i + 1 >= ac || (res->pktsize = ft_atoi(av[++i])) == 0)
-					usage(av[0], 1);
-				break;
-			case 'w': // set deadline
-				if (i + 1 >= ac || (res->deadline = ft_atoi(av[++i])) == 0)
-					usage(av[0], 1);
-				break;
-			case 'W': // set timeout
-				if (i + 1 >= ac || (res->timeout = ft_atoi(av[++i])) == 0)
-					usage(av[0], 1);
-				break;
-			default:
-				usage(av[0], 1);
-				break;
-			}
-		}
-		else
-		{
-			res->hostname = av[i];
-		}
-	}
-}
-
 int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 {
 	struct msghdr msg;
@@ -84,9 +14,11 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 		msg.msg_iovlen = 1;
 		iov[0].iov_base = ippckt;
 		iov[0].iov_len = size;
-		recvmsg(fd, &msg, 0);
+		if ((recvmsg(fd, &msg, 0)) < 0) {
+			return (-1);
+		}
 		ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
-		ft_memcpy(&tmp, (void*)ippckt + IP_HDR, size - IP_HDR);
+		ft_memcpy(&tmp, (void*)ippckt + IP_HDR, size - IP_HDR); // ptr to location instead of cpy
 		if (tmp.hdr.type == 0 && tmp.hdr.code == 0 && tmp.hdr.rest.echo.id == ppkt->hdr.rest.echo.id){
 			flag = 0;
 		} else if (tmp.hdr.type == 11 && tmp.hdr.code == 0) {
@@ -100,33 +32,18 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 void send_ping(ping_data *data)
 {
 	int msg_count = 0, flag = 1,
-		msg_received_count = 0, on = 1;
+		msg_received_count = 0;
 	struct ping_pkt *pckt;
 	struct ip_pkt *res_ip;
 
 	long double rtt_msec = 0;
 	long double total_msec = 0;
-	struct timeval tv_out;
+	
 	struct timeval tv_start, tv_end, tv_fs, tv_fe;
-	tv_out.tv_sec = data->timeout;
-	tv_out.tv_usec = 0;
 	struct sockaddr_in *ping_addr = (struct sockaddr_in *)data->ip_addr->ai_addr;
 
 	printf("PING %s (%s) %d(%ld) bytes of data.\n", data->hostname, data->hostaddr, data->pktsize, data->pktsize+PING_HDR+IP_HDR);
 	gettimeofday(&tv_fs, NULL);
-	if (setsockopt(data->sockfd, IPPROTO_IP, IP_TTL, (char*)&data->ttl, sizeof(data->ttl)) != 0)
-	{
-		printf("\nSetting socket options to TTL failed! %s\n", strerror(errno));
-		return;
-	}
-	if (setsockopt(data->sockfd, IPPROTO_IP, IP_RECVERR, &on, sizeof(on)) != 0)
-	{
-		printf("\nSetting socket options to REVCERR failed! %s\n", strerror(errno));
-		return;
-	}
-	// setting timeout of recv setting
-	setsockopt(data->sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv_out, sizeof tv_out);
-	setsockopt(data->sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv_out, sizeof tv_out);
 
 	pckt = (struct ping_pkt*)malloc(PING_SIZE);
 	res_ip = (struct ip_pkt*)malloc(IP_SIZE);
@@ -205,7 +122,7 @@ void send_ping(ping_data *data)
 	printf("\n=== %s ping statistics ===\n", data->hostname);
 	printf("%d packets sent, %d packets received, %.0f%% packet loss. Total time: %.0Lfms.\n\n",
 		   msg_count, msg_received_count,
-		   ((msg_count - msg_received_count) / msg_count) * 100.0,
+		   ((msg_count - msg_received_count) / msg_count) * 100.0, //Float to not truncate
 		   total_msec);
 
 	free(pckt);

@@ -37,7 +37,6 @@ int dns_lookup(char *addr_host, struct addrinfo **res)
 	// printf("\nResolving DNS..\n"); TODEL
 	if ((status = getaddrinfo(addr_host, NULL, &hints, res)) != 0)
 	{
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
 		return status;
 	}
 	return (0);
