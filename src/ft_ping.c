@@ -7,8 +7,7 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 	int		id = ppkt->hdr.rest.echo.id;
 	struct ping_pkt *tmp = NULL;
 
-	// tmp = malloc(sizeof(struct ping_pkt));
-	while (pingloop)
+	while (1)
 	{
 		ft_bzero(&msg, sizeof(msg));
 		msg.msg_iov = iov;
@@ -16,10 +15,18 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 		iov[0].iov_base = ippckt;
 		iov[0].iov_len = size;
 		if ((recvmsg(fd, &msg, 0)) < 0) {
+			if (errno == 113) {
+				continue;
+			}
+			uint16_t test = *(uint16_t*)((void*)ippckt + 52);
+			if (id == test)
+			{
+				ft_memcpy(ppkt, ((void*)ippckt) + IP_HDR, sizeof(struct ping_pkt));
+				return (2);
+			}
 			printf("%s\n", strerror(errno));
 			return (-1);
 		}
-		ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
 		tmp = ((void*)ippckt) + IP_HDR;
 		if (tmp->hdr.type == ICMP_ECHO)
 			continue;
@@ -73,7 +80,7 @@ void send_ping(ping_data *data)
 		}
 		pckt->hdr.type = ICMP_ECHO;
 		pckt->hdr.rest.echo.id = getpid();
-		pckt->hdr.rest.echo.sequence = ++msg_count;
+		pckt->hdr.rest.echo.sequence = msg_count + 1;
 		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
 
 		if (sendto(data->sockfd, pckt, PING_SIZE, 0, data->ip_addr->ai_addr, sizeof(*data->ip_addr->ai_addr)) <= 0)
@@ -81,14 +88,17 @@ void send_ping(ping_data *data)
 			printf("\nPacket Sending Failed!\n");
 			flag = 0;
 		}
+		msg_count++;
 
 		// receive packet
-		if (receive_pckt(data->sockfd, res_ip, pckt, IP_SIZE) > 0 && msg_count > 0)
+		if (receive_pckt(data->sockfd, res_ip, pckt, IP_SIZE) > 0)
 		{
 			gettimeofday(&tv_end, NULL);
 			double timeElapsed = ((double)(tv_end.tv_usec - tv_start.tv_usec)) / 1000.0;
 			rtt_msec = (tv_end.tv_sec - tv_start.tv_sec) * 1000.0 + timeElapsed;
-			if (flag && pingloop)
+			if (pckt->hdr.type == ICMP_ECHOREPLY)
+				msg_received_count++;
+			if (flag)
 			{
 				if ((pckt->hdr.type == ICMP_TIME_EXCEEDED && pckt->hdr.code == ICMP_EXC_TTL))
 				{
@@ -103,27 +113,24 @@ void send_ping(ping_data *data)
 					printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.2Lf ms\n",
 						   PING_SIZE, data->hostaddr,
 						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
-					msg_received_count++;
 				}
 				else
 				{
 					printf("%ld bytes from %s (%s) icmp_seq=%d ttl=%d time=%.2Lf ms\n",
 						   PING_SIZE, data->reverse_hostname, data->hostaddr,
 						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
-					msg_received_count++;
 				}
 			}
 		}
 	}
 	gettimeofday(&tv_fe, NULL);
 	double timeElapsed = ((double)(tv_fe.tv_usec - tv_fs.tv_usec)) / 1000.0;
-
 	total_msec = (tv_fe.tv_sec - tv_fs.tv_sec) * 1000.0 + timeElapsed;
 
 	printf("\n=== %s ping statistics ===\n", data->hostname);
 	printf("%d packets sent, %d packets received, %.0f%% packet loss. Total time: %.0Lfms.\n\n",
 		   msg_count, msg_received_count,
-		   ((msg_count - msg_received_count) / msg_count) * 100.0, //Float to not truncate
+		   ((float)(msg_count - msg_received_count) / (float)msg_count) * 100.0, //Float to not truncate
 		   total_msec);
 
 	free(pckt);

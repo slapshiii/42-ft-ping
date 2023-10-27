@@ -102,7 +102,7 @@ int init_socket(ping_data *data)
 		printf("\nSetting socket options to TTL failed! %s\n", strerror(errno));
 		return 1;
 	}
-	if (setsockopt(data->sockfd, IPPROTO_IP, IP_RECVERR, &on, sizeof(on)) != 0)
+	if (setsockopt(data->sockfd, IPPROTO_IP, IP_RECVERR, (char *)&on, sizeof(on)) != 0)
 	{
 		printf("\nSetting socket options to REVCERR failed! %s\n", strerror(errno));
 		return 1;
@@ -117,7 +117,7 @@ int init_socket(ping_data *data)
 		printf("\nSetting socket options to SND timeout failed! %s\n", strerror(errno));
 		return 1;
 	}
-	// if (setsockopt(data.sockfd, SOL_SOCKET, SO, (char *)&filter, sizeof(filter)) < 0)
+	// if (setsockopt(data->sockfd, SOL_SOCKET, SO_DONTROUTE, (char *)&on, sizeof(on)) < 0)
 	// {
 	// 	printf("\nSetting socket options to filter failed! %s\n", strerror(errno));
 	// 	return 1;
