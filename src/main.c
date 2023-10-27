@@ -16,11 +16,11 @@ void intHandler(int dummy)
 int main(int argc, char *argv[])
 {
     ping_data data;
-    struct addrinfo *ip_addr;
+    // struct addrinfo *ip_addr;
     int status;
 
     parse_arg(argc, argv, &data);
-    status = dns_lookup(data.hostname, &ip_addr);
+    status = dns_lookup(data.hostname, &data.ip_addr);
     if (status != 0)
     {
         printf("%s: %s: %s\n", argv[0], data.hostname, gai_strerror(status));
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     if ((data.is_addr = is_valid_ipv4(data.hostname)) == 0)
     {
         // printf("[%d] IP for %s:\n", getpid(), data.hostname); TODEL
-        for (struct addrinfo *p = ip_addr; p != NULL; p = p->ai_next)
+        for (struct addrinfo *p = data.ip_addr; p != NULL; p = p->ai_next)
         {
             if (p->ai_family == AF_INET)
             {
@@ -39,6 +39,8 @@ int main(int argc, char *argv[])
                 break;
             }
         }
+    } else {
+        ft_strcpy(data.hostaddr, data.hostname);
     }
 
     // struct icmp_filter filter;
@@ -62,7 +64,7 @@ int main(int argc, char *argv[])
     }
     if (!data.is_addr)
         free(data.reverse_hostname);
-    freeaddrinfo(ip_addr);
+    freeaddrinfo(data.ip_addr);
 
     return 0;
 }

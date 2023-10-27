@@ -170,7 +170,7 @@ void send_ping(ping_data *data)
 			gettimeofday(&tv_end, NULL);
 			double timeElapsed = ((double)(tv_end.tv_usec - tv_start.tv_usec)) / 1000.0;
 			rtt_msec = (tv_end.tv_sec - tv_start.tv_sec) * 1000.0 + timeElapsed;
-			if (flag)
+			if (flag && pingloop)
 			{
 				if ((pckt->hdr.type == 11 && pckt->hdr.code == 0))
 				{
@@ -179,6 +179,13 @@ void send_ping(ping_data *data)
 				else if (!(pckt->hdr.type == 0 && pckt->hdr.code == 0))
 				{
 					printf("Error..Packet received with ICMP type %d code %d\n", pckt->hdr.type, pckt->hdr.code);
+				}
+				else if (data->is_addr)
+				{
+					printf("%ld bytes from %s icmp_seq=%d ttl=%d time=%.2Lf ms\n",
+						   PING_SIZE, data->hostaddr,
+						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
+					msg_received_count++;
 				}
 				else
 				{

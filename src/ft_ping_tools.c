@@ -56,7 +56,7 @@ char *reverse_dns_lookup(struct addrinfo *p)
 	{
 		fprintf(stderr, "getnameinfo: %s\n", gai_strerror(status));
 	}
-	ret_buf = (char *)malloc((strlen(hbuf) + 1) * sizeof(char));
+	ret_buf = (char *)malloc((ft_strlen(hbuf) + 1) * sizeof(char));
 	ft_strcpy(ret_buf, hbuf);
 	return ret_buf;
 }
