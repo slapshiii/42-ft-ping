@@ -10,7 +10,7 @@ INCLUDES :=	$(H_FILES:%=-I%)
 SRCS =	$(addprefix $(SRCDIR)/, $(C_FILE))
 OBJS = 	$(addprefix $(OBJDIR)/, $(C_FILE:%.c=%.o))
 
-CFLAGS += -Wall -Werror -Wextra -g
+CFLAGS += -Wall -Werror -Wextra
 
 CC := gcc
 

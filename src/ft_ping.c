@@ -4,10 +4,11 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
-	struct ping_pkt tmp;
-	int		flag = 1;
+	int		id = ppkt->hdr.rest.echo.id;
+	struct ping_pkt *tmp = NULL;
 
-	while (pingloop && flag)
+	// tmp = malloc(sizeof(struct ping_pkt));
+	while (pingloop)
 	{
 		ft_bzero(&msg, sizeof(msg));
 		msg.msg_iov = iov;
@@ -15,24 +16,25 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 		iov[0].iov_base = ippckt;
 		iov[0].iov_len = size;
 		if ((recvmsg(fd, &msg, 0)) < 0) {
+			printf("%s\n", strerror(errno));
 			return (-1);
 		}
 		ippckt->hdr.len = (ippckt->hdr.len >> 8) | (ippckt->hdr.len << 8);
-		ft_memcpy(&tmp, (void*)ippckt + IP_HDR, size - IP_HDR); // ptr to location instead of cpy
-		if (tmp.hdr.type == 0 && tmp.hdr.code == 0 && tmp.hdr.rest.echo.id == ppkt->hdr.rest.echo.id){
-			flag = 0;
-		} else if (tmp.hdr.type == 11 && tmp.hdr.code == 0) {
-			flag = 0;
+		tmp = ((void*)ippckt) + IP_HDR;
+		if (tmp->hdr.type == ICMP_ECHO)
+			continue;
+		if (tmp->hdr.rest.echo.id == id)
+		{
+			ft_memcpy(ppkt, tmp, sizeof(struct ping_pkt));
+			return (1);
 		}
 	}
-	ft_memcpy(ppkt, &tmp, size - IP_HDR);
-	return (1);
+	return (0);
 }
 
 void send_ping(ping_data *data)
 {
-	int msg_count = 0, flag = 1,
-		msg_received_count = 0;
+	int msg_count = 0, flag, msg_received_count = 0;
 	long double rtt_msec = 0;
 	long double total_msec = 0;
 	
@@ -88,17 +90,17 @@ void send_ping(ping_data *data)
 			rtt_msec = (tv_end.tv_sec - tv_start.tv_sec) * 1000.0 + timeElapsed;
 			if (flag && pingloop)
 			{
-				if ((pckt->hdr.type == 11 && pckt->hdr.code == 0))
+				if ((pckt->hdr.type == ICMP_TIME_EXCEEDED && pckt->hdr.code == ICMP_EXC_TTL))
 				{
 					printf("From %s (%s) icmp_seq=%d Time to live exceeded\n", data->reverse_hostname, data->hostaddr, pckt->hdr.rest.echo.sequence);
 				}
-				else if (!(pckt->hdr.type == 0 && pckt->hdr.code == 0))
+				else if (pckt->hdr.type != ICMP_ECHOREPLY)
 				{
 					printf("Error..Packet received with ICMP type %d code %d\n", pckt->hdr.type, pckt->hdr.code);
 				}
 				else if (data->is_addr)
 				{
-					printf("%ld bytes from %s icmp_seq=%d ttl=%d time=%.2Lf ms\n",
+					printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.2Lf ms\n",
 						   PING_SIZE, data->hostaddr,
 						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
 					msg_received_count++;
