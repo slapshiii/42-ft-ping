@@ -33,14 +33,13 @@ void send_ping(ping_data *data)
 {
 	int msg_count = 0, flag = 1,
 		msg_received_count = 0;
-	struct ping_pkt *pckt;
-	struct ip_pkt *res_ip;
-
 	long double rtt_msec = 0;
 	long double total_msec = 0;
 	
 	struct timeval tv_start, tv_end, tv_fs, tv_fe;
-	struct sockaddr_in *ping_addr = (struct sockaddr_in *)data->ip_addr->ai_addr;
+
+	struct ping_pkt *pckt;
+	struct ip_pkt *res_ip;
 
 	printf("PING %s (%s) %d(%ld) bytes of data.\n", data->hostname, data->hostaddr, data->pktsize, data->pktsize+PING_HDR+IP_HDR);
 	gettimeofday(&tv_fs, NULL);
@@ -75,7 +74,7 @@ void send_ping(ping_data *data)
 		pckt->hdr.rest.echo.sequence = ++msg_count;
 		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
 
-		if (sendto(data->sockfd, pckt, PING_SIZE, 0, (struct sockaddr *)ping_addr, sizeof(*ping_addr)) <= 0)
+		if (sendto(data->sockfd, pckt, PING_SIZE, 0, data->ip_addr->ai_addr, sizeof(*data->ip_addr->ai_addr)) <= 0)
 		{
 			printf("\nPacket Sending Failed!\n");
 			flag = 0;
