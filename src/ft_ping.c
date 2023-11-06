@@ -116,7 +116,7 @@ void send_ping(ping_data *data)
 				{
 					printf("From %s (%s) icmp_seq=%d Time to live exceeded\n", data->reverse_hostname, data->hostaddr, pckt->hdr.rest.echo.sequence);
 					if (data->verbose)
-						print_HdrDump(res_ip);
+						print_HdrDump((void*)res_ip + IP_HDR + PING_HDR);
 				}
 				else if (pckt->hdr.type != ICMP_ECHOREPLY)
 				{

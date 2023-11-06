@@ -69,7 +69,6 @@ int is_valid_ipv4(char *ip_str)
 
 void print_HdrDump(struct ip_pkt *pkt)
 {
-	pkt = (struct ip_pkt*)((struct ping_pkt*)pkt->data)->msg;
 	struct in_addr ip_addr_d;
 	struct in_addr ip_addr_s;
 	ip_addr_d.s_addr = pkt->hdr.dstadrr;
