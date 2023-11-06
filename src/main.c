@@ -24,7 +24,7 @@ void init_data(ping_data *res)
 	ft_bzero(res, sizeof(res));
 	res->interval.tv_usec = 1000;
 	res->interval.tv_sec = 0;
-	res->ttl = 128;
+	res->ttl = 64;
 	res->count = -1;
 	res->timeout = 1;
 	res->pktsize = 56;
