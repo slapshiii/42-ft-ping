@@ -131,6 +131,8 @@ int main(int argc, char *argv[])
 	ping_data data;
 	int status;
 
+	printf("%ld %ld\n", sizeof(int), sizeof(void*));
+
 	init_data(&data);
 	parse_arg(argc, argv, &data);
 	status = dns_lookup(data.hostname, &data.ip_addr);

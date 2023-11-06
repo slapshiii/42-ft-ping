@@ -42,15 +42,17 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppkt, int size)
 void send_ping(ping_data *data)
 {
 	int msg_count = 0, flag, msg_received_count = 0;
-	long double rtt_msec = 0;
-	long double total_msec = 0;
+	double rtt_min = 999, rtt_max = 0, rtt_avg = 0;
+	// double total_msec = 0;
+
+	t_list *lst_values = NULL;
 	
 	struct timeval tv_start, tv_end, tv_fs, tv_fe;
 
 	struct ping_pkt *pckt;
 	struct ip_pkt *res_ip;
 
-	printf("PING %s (%s) %d(%ld) bytes of data.\n", data->hostname, data->hostaddr, data->pktsize, data->pktsize+PING_HDR+IP_HDR);
+	printf("PING %s (%s): %d data bytes\n", data->hostname, data->hostaddr, data->pktsize);
 	gettimeofday(&tv_fs, NULL);
 
 	pckt = (struct ping_pkt*)malloc(PING_SIZE);
@@ -95,7 +97,12 @@ void send_ping(ping_data *data)
 		{
 			gettimeofday(&tv_end, NULL);
 			double timeElapsed = ((double)(tv_end.tv_usec - tv_start.tv_usec)) / 1000.0;
-			rtt_msec = (tv_end.tv_sec - tv_start.tv_sec) * 1000.0 + timeElapsed;
+			double *rtt_msec = (double*)malloc(sizeof(double));
+			*rtt_msec = (tv_end.tv_sec - tv_start.tv_sec) * 1000.0 + timeElapsed;
+			rtt_min = (rtt_min > *rtt_msec) ? *rtt_msec : rtt_min;
+			rtt_max = (rtt_max < *rtt_msec) ? *rtt_msec : rtt_max;
+			rtt_avg += *rtt_msec;
+			ft_lstadd_back(&lst_values, ft_lstnew(rtt_msec));
 			if (pckt->hdr.type == ICMP_ECHOREPLY)
 				msg_received_count++;
 			if (flag)
@@ -108,31 +115,27 @@ void send_ping(ping_data *data)
 				{
 					printf("Error..Packet received with ICMP type %d code %d\n", pckt->hdr.type, pckt->hdr.code);
 				}
-				else if (data->is_addr)
-				{
-					printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.2Lf ms\n",
-						   PING_SIZE, data->hostaddr,
-						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
-				}
 				else
 				{
-					printf("%ld bytes from %s (%s) icmp_seq=%d ttl=%d time=%.2Lf ms\n",
-						   PING_SIZE, data->reverse_hostname, data->hostaddr,
-						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, rtt_msec);
+					printf("%ld bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
+						   PING_SIZE, data->hostaddr,
+						   pckt->hdr.rest.echo.sequence, res_ip->hdr.ttl, *rtt_msec);
 				}
 			}
 		}
 	}
 	gettimeofday(&tv_fe, NULL);
-	double timeElapsed = ((double)(tv_fe.tv_usec - tv_fs.tv_usec)) / 1000.0;
-	total_msec = (tv_fe.tv_sec - tv_fs.tv_sec) * 1000.0 + timeElapsed;
+	// double timeElapsed = ((double)(tv_fe.tv_usec - tv_fs.tv_usec)) / 1000.0;
+	// total_msec = (tv_fe.tv_sec - tv_fs.tv_sec) * 1000.0 + timeElapsed;
+	rtt_avg /= msg_received_count;
 
-	printf("\n=== %s ping statistics ===\n", data->hostname);
-	printf("%d packets sent, %d packets received, %.0f%% packet loss. Total time: %.0Lfms.\n\n",
-		   msg_count, msg_received_count,
-		   ((float)(msg_count - msg_received_count) / (float)msg_count) * 100.0, //Float to not truncate
-		   total_msec);
+	printf("\n--- %s ping statistics ---n", data->hostname);
+	printf("%d packets transmitted, %d packets received, %.0f%% packet loss\n",
+		   msg_count, msg_received_count, ((float)(msg_count - msg_received_count) / (float)msg_count) * 100.0);
+	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
+		   rtt_min, rtt_avg, rtt_max, calculate_stddev(lst_values, rtt_avg, msg_received_count));
 
+	ft_lstclear(&lst_values, free);
 	free(pckt);
 	free(res_ip);
 }

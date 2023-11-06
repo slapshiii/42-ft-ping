@@ -104,5 +104,8 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppckt, int size
 void DumpIpPck(struct ip_pkt data);
 void DumpPingPck(struct ping_pkt data);
 int mypow(int x, int n);
+double mypowd(double x, int n);
+double findSQRT(double number);
+double calculate_stddev(t_list *values, double mean, int count);
 
 #endif // FT_PING_H

@@ -124,3 +124,56 @@ int mypow(int x, int n) {
 	}
 	return (res);
 }
+
+double mypowd(double x, int n) {
+	double res = 1;
+	for (int i = 0; i < n; ++i) {
+		res *= x;
+	}
+	return (res);
+}
+
+double findSQRT(double number)
+{
+    double start = 0, end = number;
+    double mid;
+    float ans;
+    while (start <= end) {
+        mid = (start + end) / 2;
+        if (mid * mid == number) {
+            ans = mid;
+            break;
+        }
+        if (mid * mid < number) {
+            ans=start;
+            start = mid + 1;
+        }
+        else {
+            end = mid - 1;
+        }
+    }
+    float increment = 0.1;
+    for (int i = 0; i < 5; i++) {
+        while (ans * ans <= number) {
+            ans += increment;
+        }
+        ans = ans - increment;
+        increment = increment / 10;
+    }
+    return ans;
+}
+
+double calculate_stddev(t_list *values, double mean, int count)
+{
+	t_list *curr = values;
+	double	var;
+	double	dev;
+	while (curr)
+	{
+		dev = *(double*)curr->content - mean;
+		var += mypowd(dev, 2);
+		curr = curr->next;
+	}
+	var = var / (count - 1);
+	return (findSQRT(var));
+}
