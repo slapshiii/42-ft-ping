@@ -82,7 +82,7 @@ void send_ping(ping_data *data)
 		}
 		pckt->hdr.type = ICMP_ECHO;
 		pckt->hdr.rest.echo.id = getpid();
-		pckt->hdr.rest.echo.sequence = msg_count + 1;
+		pckt->hdr.rest.echo.sequence = msg_count;
 		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
 
 		if (sendto(data->sockfd, pckt, PING_SIZE, 0, data->ip_addr->ai_addr, sizeof(*data->ip_addr->ai_addr)) <= 0)
@@ -129,7 +129,7 @@ void send_ping(ping_data *data)
 	// total_msec = (tv_fe.tv_sec - tv_fs.tv_sec) * 1000.0 + timeElapsed;
 	rtt_avg /= msg_received_count;
 
-	printf("\n--- %s ping statistics ---n", data->hostname);
+	printf("\n--- %s ping statistics ---\n", data->hostname);
 	printf("%d packets transmitted, %d packets received, %.0f%% packet loss\n",
 		   msg_count, msg_received_count, ((float)(msg_count - msg_received_count) / (float)msg_count) * 100.0);
 	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
