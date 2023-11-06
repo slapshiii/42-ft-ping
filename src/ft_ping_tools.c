@@ -67,6 +67,31 @@ int is_valid_ipv4(char *ip_str)
 	return (inet_pton(AF_INET, ip_str, &(sa.sin_addr)) == 1);
 }
 
+void print_HdrDump(struct ip_pkt *pkt)
+{
+
+	struct in_addr ip_addr_d;
+	struct in_addr ip_addr_s;
+	ip_addr_d.s_addr = pkt->hdr.dstadrr;
+	ip_addr_s.s_addr = pkt->hdr.srcaddr;
+	printf("IP Hdr Dump:\n");
+	for (int i = 0; i < (int)IP_HDR; ++i)
+	{
+		if (!(i % 2))
+			printf(" ");
+		printf("%02x", ((unsigned char *)pkt)[i]);
+	}
+	printf("\nVr HL TOS  Len   ID Flg  off TTL Pro  cks      Src   Dst     Data\n");
+	printf("%2x %2x %2x%x %04x %04x %3d %04d  %02d %02d %4x %s %s\n",
+		pkt->hdr.verlen >> 4, pkt->hdr.verlen & 0xf,
+		pkt->hdr.tos_ecn >> 2, pkt->hdr.tos_ecn & 0x2,
+		pkt->hdr.len, pkt->hdr.id,
+		pkt->hdr.flag_fragoff >> 13, pkt->hdr.flag_fragoff & 0x1fff,
+		pkt->hdr.ttl, pkt->hdr.proto, pkt->hdr.checksum,
+		inet_ntoa(ip_addr_s), inet_ntoa(ip_addr_d)
+	);
+}
+
 void DumpHex(const void *data, size_t size)
 {
 	char ascii[17];

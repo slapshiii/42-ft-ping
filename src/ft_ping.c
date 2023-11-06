@@ -51,8 +51,13 @@ void send_ping(ping_data *data)
 
 	struct ping_pkt *pckt;
 	struct ip_pkt *res_ip;
+	int pid = getpid();
 
-	printf("PING %s (%s): %d data bytes\n", data->hostname, data->hostaddr, data->pktsize);
+	printf("PING %s (%s): %d data bytes", data->hostname, data->hostaddr, data->pktsize);
+	if (data->verbose)
+		printf(", id 0x0%x = %d\n", pid, pid);
+	else
+		printf("\n");
 	gettimeofday(&tv_fs, NULL);
 
 	pckt = (struct ping_pkt*)malloc(PING_SIZE);
@@ -81,7 +86,7 @@ void send_ping(ping_data *data)
 			break;
 		}
 		pckt->hdr.type = ICMP_ECHO;
-		pckt->hdr.rest.echo.id = getpid();
+		pckt->hdr.rest.echo.id = pid;
 		pckt->hdr.rest.echo.sequence = msg_count;
 		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
 
@@ -110,6 +115,8 @@ void send_ping(ping_data *data)
 				if ((pckt->hdr.type == ICMP_TIME_EXCEEDED && pckt->hdr.code == ICMP_EXC_TTL))
 				{
 					printf("From %s (%s) icmp_seq=%d Time to live exceeded\n", data->reverse_hostname, data->hostaddr, pckt->hdr.rest.echo.sequence);
+					if (data->verbose)
+						print_HdrDump(res_ip);
 				}
 				else if (pckt->hdr.type != ICMP_ECHOREPLY)
 				{

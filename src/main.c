@@ -29,6 +29,7 @@ void init_data(ping_data *res)
 	res->timeout = 1;
 	res->pktsize = 56;
 	res->deadline = -1;
+	res->verbose = 0;
 }
 
 void parse_arg(int ac, char **av, ping_data *res)
@@ -64,6 +65,10 @@ void parse_arg(int ac, char **av, ping_data *res)
 			case 's': // set packetsize
 				if (i + 1 < ac && (res->pktsize = ft_atoi(av[++i])) != 0)
 					break;
+				// fall through
+			case 'v': // set verbose
+				res->verbose = 1;
+				break;
 				// fall through
 			case 'w': // set deadline
 				if (i + 1 < ac && (res->deadline = ft_atoi(av[++i])) != 0)
@@ -130,8 +135,6 @@ int main(int argc, char *argv[])
 {
 	ping_data data;
 	int status;
-
-	printf("%ld %ld\n", sizeof(int), sizeof(void*));
 
 	init_data(&data);
 	parse_arg(argc, argv, &data);

@@ -84,6 +84,7 @@ typedef struct ping_data_s
 	int				ttl;
 	int				pktsize;
 	int				timeout;
+	int				verbose;
 	struct timeval	interval;
 } ping_data;
 
@@ -103,6 +104,7 @@ int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppckt, int size
 
 void DumpIpPck(struct ip_pkt data);
 void DumpPingPck(struct ping_pkt data);
+void print_HdrDump(struct ip_pkt *pkt);
 int mypow(int x, int n);
 double mypowd(double x, int n);
 double findSQRT(double number);
