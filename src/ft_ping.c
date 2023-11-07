@@ -62,7 +62,6 @@ int receive_pckt(res_ip *res, struct ping_pkt *ppkt, ping_data* data)
 					return (1);
 			}
 		} else if (errno != EHOSTUNREACH) {
-			printf("error peeking: %s (%d)\n", strerror(errno), errno);
 			return (1);
 		}
 	}
@@ -71,7 +70,7 @@ int receive_pckt(res_ip *res, struct ping_pkt *ppkt, ping_data* data)
 
 void send_ping(ping_data *data)
 {
-	int msg_count = 0, flag;
+	int msg_count = 0, flag, count = data->count;
 
 	t_list *lst_values = NULL;
 	
@@ -93,10 +92,10 @@ void send_ping(ping_data *data)
 	ft_bzero(pckt_res, PING_SIZE);
 
 	// send icmp packet in an infinite loop
-	while (pingloop && data->count)
+	while (pingloop && count)
 	{
-		if (data->count > 0)
-			data->count--;
+		if (count > 0)
+			count--;
 		// flag is whether packet was sent or not
 		flag = 1;
 

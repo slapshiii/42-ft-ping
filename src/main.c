@@ -34,7 +34,8 @@ void init_data(ping_data *res)
 
 void parse_arg(int ac, char **av, ping_data *res)
 {
-	for (int i = 1; i < ac; i++)
+	int i = 1;
+	for (; i < ac; i++)
 	{
 		if ((av[i][0] == '-'))
 		{
@@ -85,10 +86,11 @@ void parse_arg(int ac, char **av, ping_data *res)
 		}
 		else
 		{
-			res->hostname = av[i];
+			break;
 		}
 	}
-	if (res->hostname == NULL)
+	res->ac = i;
+	if (res->ac == 0 || i == ac)
 	{
 		printf("%s: usage error: Destination address required\n", av[0]);
 		exit(1);
@@ -99,8 +101,6 @@ int init_socket(ping_data *data)
 {
 	int on = 1;
 	struct timeval tv_out = {data->timeout, 0};
-	// struct icmp_filter filter;
-    // filter.data = ~((1 << ICMP_ECHOREPLY));
 
 	if (setsockopt(data->sockfd, IPPROTO_IP, IP_TTL, (char *)&data->ttl, sizeof(data->ttl)) != 0)
 	{
@@ -122,11 +122,6 @@ int init_socket(ping_data *data)
 		printf("\nSetting socket options to SND timeout failed! %s\n", strerror(errno));
 		return 1;
 	}
-	// if (setsockopt(data->sockfd, SOL_SOCKET, SO_DONTROUTE, (char *)&on, sizeof(on)) < 0)
-	// {
-	// 	printf("\nSetting socket options to filter failed! %s\n", strerror(errno));
-	// 	return 1;
-	// }
 	return 0;
 }
 
@@ -139,47 +134,50 @@ int main(int argc, char *argv[])
 
 	init_data(&data);
 	parse_arg(argc, argv, &data);
-	status = dns_lookup(data.hostname, &addrinfo);
-	if (status != 0)
-	{
-		printf("%s: %s: %s\n", argv[0], data.hostname, gai_strerror(status));
-		return (2);
-	}
-	if ((data.is_addr = is_valid_ipv4(data.hostname)) == 0)
-	{
-		for (struct addrinfo *p = addrinfo; p != NULL; p = p->ai_next)
+	for (int i = data.ac; i < argc; ++i){
+		data.hostname = argv[i];
+		status = dns_lookup(data.hostname, &addrinfo);
+		if (status != 0)
 		{
-			if (p->ai_family == AF_INET)
+			printf("%s: %s: %s\n", argv[0], data.hostname, gai_strerror(status));
+			return (2);
+		}
+		if ((data.is_addr = is_valid_ipv4(data.hostname)) == 0)
+		{
+			for (struct addrinfo *p = addrinfo; p != NULL; p = p->ai_next)
 			{
-				data.ip_addr = p;
-				inet_ntop(AF_INET, &(((struct sockaddr_in *)p->ai_addr)->sin_addr), data.hostaddr, INET_ADDRSTRLEN);
-				data.reverse_hostname = reverse_dns_lookup(p);
-				break;
+				if (p->ai_family == AF_INET)
+				{
+					data.ip_addr = p;
+					inet_ntop(AF_INET, &(((struct sockaddr_in *)p->ai_addr)->sin_addr), data.hostaddr, INET_ADDRSTRLEN);
+					data.reverse_hostname = reverse_dns_lookup(p);
+					break;
+				}
 			}
 		}
-	}
-	else
-	{
-		ft_strcpy(data.hostaddr, data.hostname);
-	}
+		else
+		{
+			ft_strcpy(data.hostaddr, data.hostname);
+		}
 
-	data.sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (data.sockfd < 0)
-	{
-		printf("\nSocket file descriptor not received!!\n");
-		fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
-	}
-	else
-	{
-		signal(SIGINT, intHandler); // catching interrupt
+		data.sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+		if (data.sockfd < 0)
+		{
+			printf("\nSocket file descriptor not received!!\n");
+			fprintf(stderr, "%s: %s: %s\n", argv[0], argv[1], strerror(errno));
+		}
+		else
+		{
+			signal(SIGINT, intHandler); // catching interrupt
 
-		init_socket(&data);
-		send_ping(&data);
+			init_socket(&data);
+			send_ping(&data);
+		}
+		if (!data.is_addr)
+			free(data.reverse_hostname);
+		freeaddrinfo(addrinfo);
+		close(data.sockfd);
 	}
-	if (!data.is_addr)
-		free(data.reverse_hostname);
-	freeaddrinfo(addrinfo);
-	close(data.sockfd);
 
 	return 0;
 }
