@@ -26,7 +26,7 @@ int receive_pckt(res_ip *res, struct ping_pkt *ppkt, ping_data* data)
 	unsigned char buf[IP_HDR];
 	int status;
 
-	while(pingloop)
+	while(1)
 	{
 		ft_bzero(&msg, sizeof(msg));
 		msg.msg_iov = iov;
