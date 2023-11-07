@@ -56,7 +56,8 @@ int receive_pckt(res_ip *res, struct ping_pkt *ppkt, ping_data* data)
 				ft_memcpy(ppkt, ((void*)ippkt) + IP_HDR, res->size - IP_HDR);
 				res->ttl = ippkt->hdr.ttl;
 				free(ippkt);
-				return (1);
+				if (ppkt->hdr.type == ICMP_TIME_EXCEEDED || ppkt->hdr.rest.echo.id == data->pid)
+					return (1);
 			}
 		} else if (errno != EHOSTUNREACH) {
 			printf("error peeking: %s (%d)\n", strerror(errno), errno);
@@ -75,11 +76,11 @@ void send_ping(ping_data *data)
 	struct timeval tv_start, tv_end, tv_fs, tv_fe;
 	struct ping_pkt *pckt, *pckt_res;
 	res_ip res;
-	int pid = getpid();
+	data->pid = getpid();
 
 	printf("PING %s (%s): %d data bytes", data->hostname, data->hostaddr, data->pktsize);
 	if (data->verbose)
-		printf(", id 0x0%x = %d\n", pid, pid);
+		printf(", id 0x0%x = %d\n", data->pid, data->pid);
 	else
 		printf("\n");
 	gettimeofday(&tv_fs, NULL);
@@ -110,8 +111,8 @@ void send_ping(ping_data *data)
 		ft_bzero(pckt, PING_SIZE);
 		pckt->hdr.type = ICMP_ECHO;
 		pckt->hdr.code = 0;
-		pckt->hdr.rest.echo.id = pid;
-		pckt->hdr.rest.echo.sequence = msg_count++;
+		pckt->hdr.rest.echo.id = data->pid;
+		pckt->hdr.rest.echo.sequence = msg_count;
 		pckt->hdr.checksum = checksum(pckt, PING_SIZE);
 		gettimeofday(&tv_start, NULL);
 		if ((sendto(data->sockfd, pckt, PING_SIZE, MSG_DONTWAIT, data->ip_addr->ai_addr, sizeof(*data->ip_addr->ai_addr))) != (int)PING_SIZE)
@@ -121,6 +122,7 @@ void send_ping(ping_data *data)
 		}
 		if (flag)
 		{
+			msg_count++;
 			if (receive_pckt(&res, pckt_res, data) > 0)
 			{
 				res.size -= IP_HDR;
@@ -139,7 +141,7 @@ void send_ping(ping_data *data)
 					{
 						print_HdrDump((void*)pckt_res + PING_HDR);
 						printf("ICMP: type %d, code %d, size %ld, id 0x%04x, seq 0x0%03x\n",
-							pckt->hdr.type, pckt->hdr.code, PING_SIZE, pid, msg_count
+							pckt->hdr.type, pckt->hdr.code, PING_SIZE, data->pid, msg_count
 						);
 					}
 				}

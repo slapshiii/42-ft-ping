@@ -87,6 +87,7 @@ typedef struct ping_data_s
 	int				pktsize;
 	int				timeout;
 	int				verbose;
+	int				pid;
 	struct timeval	interval;
 }				ping_data;
 
