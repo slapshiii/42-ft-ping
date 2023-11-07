@@ -44,6 +44,8 @@
 #define IPHDR_LEN(h) (((h).verlen & 0b1111) * 4)
 #define IP_SIZE (IP_HDR + PING_SIZE)
 
+#define REVERSE_ENDIAN16(x) ((x << 8) | (x >> 8))
+
 // ping packet structure
 struct ping_pkt
 {
@@ -68,7 +70,7 @@ struct iphdr
 struct ip_pkt
 {
 	struct iphdr hdr;
-	char *data;
+	unsigned char *data;
 };
 
 typedef struct ping_data_s
@@ -86,7 +88,20 @@ typedef struct ping_data_s
 	int				timeout;
 	int				verbose;
 	struct timeval	interval;
-} ping_data;
+}				ping_data;
+
+typedef struct res_ip_s
+{
+	struct sockaddr	sa;
+	uint16_t		size;
+	int				ttl;
+	struct ip_pkt	*ip_pck;
+}				res_ip;
+
+#define STAT_MIN 0
+#define STAT_AVG 1
+#define STAT_MAX 2
+#define STAT_STDDEV 3
 
 extern int pingloop;
 
@@ -95,12 +110,14 @@ unsigned short checksum(void *b, int len);
 int dns_lookup(char *addr_host, struct addrinfo **res);
 char *reverse_dns_lookup(struct addrinfo *p);
 int is_valid_ipv4(char *ip_str);
+int is_valid_ipv4_hdr(unsigned char *buf);
+int	calculate_stats(t_list *values, double *tab);
 
 void send_ping(ping_data *data);
 
 void parse_arg(int ac, char **av, ping_data *data);
 void DumpHex(const void *data, size_t size);
-int receive_pckt(int fd, struct ip_pkt *ippckt, struct ping_pkt *ppckt, int size);
+int receive_pckt(res_ip *res, struct ping_pkt *ppckt, ping_data *data);
 
 void DumpIpPck(struct ip_pkt data);
 void DumpPingPck(struct ping_pkt data);

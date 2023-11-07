@@ -34,7 +34,6 @@ int dns_lookup(char *addr_host, struct addrinfo **res)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	// printf("\nResolving DNS..\n"); TODEL
 	if ((status = getaddrinfo(addr_host, NULL, &hints, res)) != 0)
 	{
 		return status;
@@ -49,7 +48,6 @@ char *reverse_dns_lookup(struct addrinfo *p)
 	char *ret_buf;
 	int status;
 
-	// printf("\nResolving reverseDNS..\n"); TODEL
 	status = getnameinfo(p->ai_addr, p->ai_addrlen, hbuf, NI_MAXHOST, NULL, 0, 0);
 	if (status != 0)
 	{
@@ -67,12 +65,23 @@ int is_valid_ipv4(char *ip_str)
 	return (inet_pton(AF_INET, ip_str, &(sa.sin_addr)) == 1);
 }
 
+int is_valid_ipv4_hdr(unsigned char *buf)
+{
+	struct ip_pkt *ippkt = (struct ip_pkt *)buf;
+	return (ippkt->hdr.verlen >> 4 == 4
+			&& ippkt->hdr.proto == 1);
+}
+
 void print_HdrDump(struct ip_pkt *pkt)
 {
 	struct in_addr ip_addr_d;
 	struct in_addr ip_addr_s;
-	ip_addr_d.s_addr = pkt->hdr.dstadrr;
-	ip_addr_s.s_addr = pkt->hdr.srcaddr;
+	ip_addr_d.s_addr = (in_addr_t)pkt->hdr.dstadrr;
+	ip_addr_s.s_addr = (in_addr_t)pkt->hdr.srcaddr;
+	char src[INET_ADDRSTRLEN], dst[INET_ADDRSTRLEN];
+	ft_strcpy(src, inet_ntoa(ip_addr_s));
+	ft_strcpy(dst, inet_ntoa(ip_addr_d));
+
 	printf("IP Hdr Dump:\n");
 	for (int i = 0; i < (int)IP_HDR; ++i)
 	{
@@ -80,14 +89,14 @@ void print_HdrDump(struct ip_pkt *pkt)
 			printf(" ");
 		printf("%02x", ((unsigned char *)pkt)[i]);
 	}
-	printf("\nVr HL TOS  Len   ID Flg  off TTL Pro  cks      Src   Dst     Data\n");
-	printf("%2x %2x %2x%x %04x %04x %3d %04d  %02d %02d %4x %s %s\n",
+	printf("\nVr HL TOS  Len   ID Flg  off TTL Pro  cks      Src      Dst     Data\n");
+	printf("%2x %2x %2x%x %04x %04x %3d %04d  %02d  %02d %4x %s %s\n",
 		pkt->hdr.verlen >> 4, pkt->hdr.verlen & 0xf,
 		pkt->hdr.tos_ecn >> 2, pkt->hdr.tos_ecn & 0x2,
 		pkt->hdr.len, pkt->hdr.id,
 		pkt->hdr.flag_fragoff >> 13, pkt->hdr.flag_fragoff & 0x1fff,
 		pkt->hdr.ttl, pkt->hdr.proto, pkt->hdr.checksum,
-		inet_ntoa(ip_addr_s), inet_ntoa(ip_addr_d)
+		src, dst 
 	);
 }
 
@@ -157,40 +166,40 @@ double mypowd(double x, int n) {
 	return (res);
 }
 
-double findSQRT(double number)
+double findSQRT(double n)
 {
-    double start = 0, end = number;
-    double mid;
-    float ans;
-    while (start <= end) {
-        mid = (start + end) / 2;
-        if (mid * mid == number) {
-            ans = mid;
-            break;
-        }
-        if (mid * mid < number) {
-            ans=start;
-            start = mid + 1;
-        }
-        else {
-            end = mid - 1;
-        }
-    }
-    float increment = 0.1;
-    for (int i = 0; i < 5; i++) {
-        while (ans * ans <= number) {
-            ans += increment;
-        }
-        ans = ans - increment;
-        increment = increment / 10;
-    }
-    return ans;
+	double i, precision = 0.00001;
+
+	for(i = 1; i*i <=n; ++i);           //Integer part
+
+	for(--i; i*i < n; i += precision);  //Fractional part
+
+	return i;
+}
+
+int	calculate_stats(t_list *values, double *tab)
+{
+	int cnt = 0;
+	double sum = 0;
+	t_list *curr = values;
+	while (curr)
+	{
+		cnt++;
+		if (*(double*)curr->content < tab[STAT_MIN])
+			tab[STAT_MIN] = *(double*)curr->content;
+		if (*(double*)curr->content > tab[STAT_MAX])
+			tab[STAT_MAX] = *(double*)curr->content;
+		sum += *(double*)curr->content;
+		curr = curr->next;
+	}
+	tab[STAT_AVG] = sum / cnt;
+	return cnt;
 }
 
 double calculate_stddev(t_list *values, double mean, int count)
 {
 	t_list *curr = values;
-	double	var;
+	double	var = 0;
 	double	dev;
 	while (curr)
 	{
@@ -199,5 +208,6 @@ double calculate_stddev(t_list *values, double mean, int count)
 		curr = curr->next;
 	}
 	var = var / (count - 1);
+
 	return (findSQRT(var));
 }

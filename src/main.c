@@ -178,6 +178,7 @@ int main(int argc, char *argv[])
 	if (!data.is_addr)
 		free(data.reverse_hostname);
 	freeaddrinfo(data.ip_addr);
+	close(data.sockfd);
 
 	return 0;
 }

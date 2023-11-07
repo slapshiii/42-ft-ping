@@ -2,16 +2,17 @@
 NAME :=	ft_ping
 SRCDIR := src
 OBJDIR := obj
+INCDIR :=	$(shell find -L ./ -name '*.h' -exec dirname {} \; | sed 's/ /\\ /g' | uniq)
 
-H_FILES :=	$(shell find -L ./ -name '*.h' -exec dirname {} \; | sed 's/ /\\ /g' | uniq)
+H_FILES :=	$(shell find -L ./ -name '*.h' | sed 's/ /\\ /g' | uniq)
 C_FILE =	main.c ft_ping.c ft_ping_tools.c 
 
-INCLUDES :=	$(H_FILES:%=-I%)
+INCLUDES :=	$(INCDIR:%=-I%)
 SRCS =	$(addprefix $(SRCDIR)/, $(C_FILE))
 OBJS = 	$(addprefix $(OBJDIR)/, $(C_FILE:%.c=%.o))
 
 CFLAGS += -Wall -Werror -Wextra
-
+CFLAGS += -g
 CC := gcc
 
 all:	${NAME}
