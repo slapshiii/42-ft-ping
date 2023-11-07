@@ -81,6 +81,14 @@ void print_HdrDump(struct ip_pkt *pkt)
 	char src[INET_ADDRSTRLEN], dst[INET_ADDRSTRLEN];
 	ft_strcpy(src, inet_ntoa(ip_addr_s));
 	ft_strcpy(dst, inet_ntoa(ip_addr_d));
+	uint16_t len = pkt->hdr.len;
+	uint16_t flag_offset = pkt->hdr.flag_fragoff;
+	uint16_t id = pkt->hdr.id;
+	uint16_t checksum = pkt->hdr.checksum;
+	len = REVERSE_ENDIAN16(len);
+	flag_offset = REVERSE_ENDIAN16(flag_offset);
+	id = REVERSE_ENDIAN16(id);
+	checksum = REVERSE_ENDIAN16(checksum);
 
 	printf("IP Hdr Dump:\n");
 	for (int i = 0; i < (int)IP_HDR; ++i)
@@ -93,9 +101,9 @@ void print_HdrDump(struct ip_pkt *pkt)
 	printf("%2x %2x %2x%x %04x %04x %3d %04d  %02d  %02d %4x %s %s\n",
 		pkt->hdr.verlen >> 4, pkt->hdr.verlen & 0xf,
 		pkt->hdr.tos_ecn >> 2, pkt->hdr.tos_ecn & 0x2,
-		pkt->hdr.len, pkt->hdr.id,
-		pkt->hdr.flag_fragoff >> 13, pkt->hdr.flag_fragoff & 0x1fff,
-		pkt->hdr.ttl, pkt->hdr.proto, pkt->hdr.checksum,
+		len, id,
+		flag_offset >> 13, flag_offset & 0x1fff,
+		pkt->hdr.ttl, pkt->hdr.proto, checksum,
 		src, dst 
 	);
 }

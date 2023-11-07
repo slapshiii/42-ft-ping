@@ -8,7 +8,7 @@ void	print_stats(t_list *values, int cnt_msg_send, char* host)
 	msg_received_count = calculate_stats(values, stat);
 	stat[STAT_STDDEV] = calculate_stddev(values, stat[STAT_AVG], msg_received_count);
 
-	printf("\n--- %s ping statistics ---\n", host);
+	printf("--- %s ping statistics ---\n", host);
 	printf("%d packets transmitted, %d packets received, %.0f%% packet loss\n",
 		   cnt_msg_send, msg_received_count, ((float)(cnt_msg_send - msg_received_count) / (float)cnt_msg_send) * 100.0);
 
@@ -49,14 +49,16 @@ int receive_pckt(res_ip *res, struct ping_pkt *ppkt, ping_data* data)
 				iov[0].iov_base = ippkt;
 				iov[0].iov_len = (size_t)res->size;
 				status = recvmsg(data->sockfd, &msg, 0);
-				if (status != res->size)
+				if (status != res->size) {
 					continue;
+					free(ippkt);
+				}
 				if (msg.msg_flags & MSG_TRUNC)
 					printf("truncated\n");
 				ft_memcpy(ppkt, ((void*)ippkt) + IP_HDR, res->size - IP_HDR);
 				res->ttl = ippkt->hdr.ttl;
 				free(ippkt);
-				if (ppkt->hdr.type == ICMP_TIME_EXCEEDED || ppkt->hdr.rest.echo.id == data->pid)
+				if (ppkt->hdr.type == ICMP_TIME_EXCEEDED || (ppkt->hdr.rest.echo.id == data->pid && ppkt->hdr.type != ICMP_ECHO))
 					return (1);
 			}
 		} else if (errno != EHOSTUNREACH) {
