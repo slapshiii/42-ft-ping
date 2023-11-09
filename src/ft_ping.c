@@ -62,7 +62,7 @@ int receive_pckt(res_ip *res, struct ping_pkt *ppkt, ping_data* data)
 					return (1);
 			}
 		} else if (errno != EHOSTUNREACH) {
-			return (1);
+			return (0);
 		}
 	}
 	return (0);
