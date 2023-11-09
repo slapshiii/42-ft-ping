@@ -134,7 +134,7 @@ void send_ping(ping_data *data)
 					int state;
 					struct sockaddr_in *src_in = (struct sockaddr_in *)&(res.sa);
 					ft_strcpy(src_ip, inet_ntoa(src_in->sin_addr));
-					if ((state = getnameinfo(&(res.sa), sizeof(res.sa), src_name, NI_MAXHOST, NULL, 0, NI_NUMERICSERV)))
+					if ((state = getnameinfo(&(res.sa), sizeof(res.sa), src_name, NI_MAXHOST, NULL, 0, 0)))
 						printf("getnameinfo failed %d %s\n", state, gai_strerror(state));
 					printf("%d bytes from %s (%s): Time to live exceeded\n",
 						res.size, src_name, src_ip);
