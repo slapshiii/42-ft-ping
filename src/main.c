@@ -14,8 +14,18 @@ void intHandler(int dummy)
 
 static void usage(char *name, int code)
 {
-	printf("\nUsage\n  %s [options] <destination>\n", name);
-	printf("\nOptions:\n");
+	printf("Usage: %s [OPTION...] HOST ...\nSend ICMP ECHO_REQUEST packets to network hosts.\n\n", name);
+	printf(" Options valid for all request types:\n\n");
+	printf("  -c,\t\tstop after sending NUMBER packets\n"\
+			"  -i,\t\twait NUMBER seconds between sending each packet\n"\
+			"  -l,\t\tspecify N as time-to-live\n"\
+			"  -v,\t\tverbose output\n"\
+			"  -w,\t\tstop after N seconds\n"\
+			"  -W,\t\tnumber of seconds to wait for response\n"\
+			"  -s,\t\tsend NUMBER data octets\n"\
+			"  -?, -h\tgive this help list\n"\
+			"  -V,\t\tprint program version\n");
+
 	exit(code);
 }
 
@@ -154,7 +164,6 @@ int main(int argc, char *argv[])
 		}
 		if ((data.is_addr = is_valid_ipv4(data.hostname)) != 0)
 			ft_strcpy(data.hostaddr, data.hostname);
-		}
 
 		data.sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 		if (data.sockfd < 0)
