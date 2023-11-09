@@ -142,21 +142,17 @@ int main(int argc, char *argv[])
 			printf("%s: %s: %s\n", argv[0], data.hostname, gai_strerror(status));
 			return (2);
 		}
-		if ((data.is_addr = is_valid_ipv4(data.hostname)) == 0)
+		for (struct addrinfo *p = addrinfo; p != NULL; p = p->ai_next)
 		{
-			for (struct addrinfo *p = addrinfo; p != NULL; p = p->ai_next)
+			if (p->ai_family == AF_INET)
 			{
-				if (p->ai_family == AF_INET)
-				{
-					data.ip_addr = p;
-					inet_ntop(AF_INET, &(((struct sockaddr_in *)p->ai_addr)->sin_addr), data.hostaddr, INET_ADDRSTRLEN);
-					data.reverse_hostname = reverse_dns_lookup(p);
-					break;
-				}
+				data.ip_addr = p;
+				inet_ntop(AF_INET, &(((struct sockaddr_in *)p->ai_addr)->sin_addr), data.hostaddr, INET_ADDRSTRLEN);
+				data.reverse_hostname = reverse_dns_lookup(p);
+				break;
 			}
 		}
-		else
-		{
+		if ((data.is_addr = is_valid_ipv4(data.hostname)) != 0)
 			ft_strcpy(data.hostaddr, data.hostname);
 		}
 
